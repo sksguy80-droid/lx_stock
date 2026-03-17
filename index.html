@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>재고조사 앱 MVP</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #d1d5db;
+      --primary: #1f4f8f;
+      --danger: #d92d20;
+      --success: #16a34a;
+      --button: #0f172a;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif; }
+    body { min-height: 100vh; }
+    .app { max-width: 520px; margin: 0 auto; min-height: 100vh; background: var(--bg); }
+    .screen { display: none; padding: 16px 16px 28px; }
+    .screen.active { display: block; }
+    .card { background: var(--card); border-radius: 16px; padding: 16px; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08); margin-bottom: 14px; }
+    .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .title { font-size: 20px; font-weight: 800; }
+    .sub { color: var(--muted); font-size: 13px; }
+    .row { display: flex; gap: 10px; }
+    .row > * { flex: 1; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    input, select, button, textarea { font: inherit; }
+    input[type="text"], input[type="password"], input[type="email"], input[type="number"], select {
+      width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #fff;
+    }
+    input[type="number"] { text-align: center; font-size: 24px; font-weight: 700; }
+    .btn { border: 0; border-radius: 12px; padding: 13px 16px; color: #fff; cursor: pointer; }
+    .btn.primary { background: var(--primary); }
+    .btn.dark { background: var(--button); }
+    .btn.danger { background: var(--danger); }
+    .btn.success { background: var(--success); }
+    .btn.gray { background: #64748b; }
+    .btn.small { padding: 10px 12px; font-size: 13px; }
+    .btn.block { width: 100%; }
+    .segment { display: flex; gap: 10px; }
+    .segment label {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line);
+      border-radius: 12px; padding: 12px; background: #fff; color: var(--text); margin-bottom: 0;
+    }
+    .segment input { width: auto; }
+    .hero-btn { font-size: 18px; font-weight: 800; padding: 18px; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px;
+    }
+    .topbar .left-link { background: none; border: 0; padding: 0; color: var(--primary); font-weight: 700; }
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .meta { background: #f8fafc; border-radius: 12px; padding: 12px; }
+    .meta .k { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .meta .v { font-weight: 700; word-break: break-all; }
+    .scanner-box { border-radius: 16px; overflow: hidden; background: #000; min-height: 340px; }
+    #reader { width: 100%; }
+    .qty-wrap { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; }
+    .qty-btn {
+      width: 56px; height: 56px; border: 0; border-radius: 14px; background: #e5e7eb; font-size: 28px; font-weight: 800;
+    }
+    .qty-input { width: 110px !important; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: 12px; font-weight: 700; }
+    .list-item { border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: #fff; margin-bottom: 10px; }
+    .list-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+    .code { font-weight: 800; word-break: break-all; }
+    .muted { color: var(--muted); }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .toast {
+      position: fixed; left: 50%; transform: translateX(-50%); top: 14px; background: rgba(22, 163, 74, 0.96); color: #fff;
+      padding: 10px 14px; border-radius: 999px; font-weight: 700; z-index: 999; display: none;
+    }
+    .toast.show { display: block; }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; background: #f1f5f9; font-size: 12px; }
+    .inline-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .hint { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 12px; padding: 10px 12px; font-size: 13px; }
+    .empty { text-align: center; padding: 24px; color: var(--muted); }
+    .right-tools { display:flex; gap:8px; align-items:center; }
+  </style>
+</head>
+<body>
+  <div class="toast" id="toast"></div>
+  <div class="app">
+    <section class="screen active" id="screen-login">
+      <div class="card">
+        <div class="title">재고조사 로그인</div>
+        <div class="sub" style="margin-top:6px;">가볍게 테스트할 수 있는 무서버 MVP 버전</div>
+      </div>
+
+      <div class="card">
+        <label>로그인 구분</label>
+        <div class="segment" style="margin-bottom:14px;">
+          <label><input type="radio" name="role" value="partner" checked> 협력사</label>
+          <label><input type="radio" name="role" value="company"> 회사</label>
+        </div>
+
+        <div id="partner-fields">
+          <div style="margin-bottom:12px;">
+            <label>협력사명</label>
+            <input type="text" id="partnerName" placeholder="예: ABC협력사" />
+          </div>
+          <div style="margin-bottom:12px;">
+            <label>조사자 ID</label>
+            <input type="text" id="userId" placeholder="예: user01" />
+          </div>
+          <div style="margin-bottom:12px;">
+            <label>비밀번호 (테스트용)</label>
+            <input type="password" id="partnerPw" placeholder="테스트용 입력" />
+          </div>
+        </div>
+
+        <div id="company-fields" style="display:none;">
+          <div style="margin-bottom:12px;">
+            <label>회사 ID</label>
+            <input type="text" id="companyId" placeholder="예: admin" />
+          </div>
+          <div style="margin-bottom:12px;">
+            <label>비밀번호</label>
+            <input type="password" id="companyPw" placeholder="예: 1234" />
+          </div>
+        </div>
+
+        <button class="btn dark block" id="loginBtn">로그인</button>
+      </div>
+
+      <div class="card">
+        <div class="title" style="font-size:16px;">옵션 미리 보기</div>
+        <div class="sub" style="margin-top:6px;">로그인 후 우측 상단 설정에서 담당자 메일, 협력사 정보 등을 볼 수 있게 해둠</div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-home">
+      <div class="topbar">
+        <div>
+          <div class="title" style="font-size:22px;">재고 스캔</div>
+          <div class="sub" id="homeUserText"></div>
+        </div>
+        <div class="right-tools">
+          <button class="btn small gray" id="openSettingsBtn">설정</button>
+          <button class="btn small danger" id="completeBtn">조사 완료</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <div>
+            <label>자재 구분</label>
+            <div class="segment">
+              <label><input type="radio" name="materialType" value="부자재" checked> 부자재</label>
+              <label><input type="radio" name="materialType" value="원자재"> 원자재</label>
+            </div>
+            <div class="inline-note">기본값은 부자재(박스)</div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:14px;">
+          <div>
+            <label>재고조사 기준일</label>
+            <input type="text" id="inventoryDate" readonly />
+          </div>
+          <div>
+            <label>현재 저장 건수</label>
+            <input type="text" id="savedCount" readonly />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <button class="btn primary block hero-btn" id="scanBtn">📷 스캔 / 사진찍기</button>
+        <div class="inline-note">QR 인식 후 저장하면 즉시 다시 카메라로 돌아감</div>
+      </div>
+
+      <div class="card">
+        <div class="hint">이 화면에서는 목록을 길게 보여주지 않고, 저장 후 바로 다음 스캔으로 넘어가게 구성함.</div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-scan">
+      <div class="topbar">
+        <button class="left-link" id="backHomeFromScan">← 재고 스캔</button>
+        <button class="btn small danger" id="completeBtnScan">조사 완료</button>
+      </div>
+      <div class="card">
+        <div class="title" style="font-size:18px;">QR 스캔</div>
+        <div class="sub" style="margin-top:6px;">QR 인식되면 자동으로 수량 입력 화면으로 이동</div>
+      </div>
+      <div class="scanner-box card" style="padding:0;">
+        <div id="reader"></div>
+      </div>
+      <div class="card">
+        <button class="btn gray block" id="photoFallbackBtn">QR 없음 → 사진으로 대체</button>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none;" />
+      </div>
+    </section>
+
+    <section class="screen" id="screen-entry">
+      <div class="topbar">
+        <button class="left-link" id="backToScanBtn">← 재고 스캔</button>
+        <button class="btn small danger" id="completeBtnEntry">조사 완료</button>
+      </div>
+
+      <div class="card">
+        <div class="title" style="font-size:20px;">스캔 결과 입력</div>
+        <div class="sub" style="margin-top:6px;">저장하기를 누르면 즉시 다시 카메라가 켜짐</div>
+      </div>
+
+      <div class="card">
+        <div class="meta-grid">
+          <div class="meta">
+            <div class="k">조사자재코드</div>
+            <div class="v" id="entryCode">-</div>
+          </div>
+          <div class="meta">
+            <div class="k">단위</div>
+            <div class="v" id="entryUnit">박스</div>
+          </div>
+          <div class="meta">
+            <div class="k">LOT(표시용)</div>
+            <div class="v" id="entryLot">-</div>
+          </div>
+          <div class="meta">
+            <div class="k">SERIAL(표시용)</div>
+            <div class="v" id="entrySerial">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="title" style="font-size:18px; text-align:center;">수량 (<span id="entryUnitLabel">박스</span>)</div>
+        <div class="qty-wrap">
+          <button class="qty-btn" id="minusBtn">−</button>
+          <input class="qty-input" type="number" min="1" step="1" id="qtyInput" value="1" />
+          <button class="qty-btn" id="plusBtn">＋</button>
+        </div>
+        <div class="inline-note" style="text-align:center;">가운데 숫자를 터치해서 직접 입력 가능</div>
+      </div>
+
+      <div class="card">
+        <div class="actions">
+          <button class="btn success block" id="saveEntryBtn">저장하기</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-complete">
+      <div class="topbar">
+        <button class="left-link" id="backHomeFromComplete">← 홈으로</button>
+        <div class="title" style="font-size:20px;">조사 내역</div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <div>
+            <div class="title" style="font-size:16px;">저장된 건수</div>
+            <div class="sub" id="completeSummary"></div>
+          </div>
+          <div style="text-align:right;">
+            <span class="pill" id="roleBadge"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="actions">
+          <button class="btn dark" id="exportCsvBtn">CSV 저장</button>
+          <button class="btn primary" id="sendMailBtn">메일 보내기</button>
+          <button class="btn gray" id="clearAllBtn">전체 삭제</button>
+        </div>
+        <div class="inline-note">브라우저 보안상 첨부는 자동으로 안 붙을 수 있어. 먼저 CSV 저장 후 메일 앱에서 첨부하면 됨.</div>
+      </div>
+
+      <div id="recordList"></div>
+    </section>
+
+    <section class="screen" id="screen-settings">
+      <div class="topbar">
+        <button class="left-link" id="backHomeFromSettings">← 홈으로</button>
+        <div class="title" style="font-size:20px;">옵션</div>
+      </div>
+
+      <div class="card">
+        <div class="title" style="font-size:16px;">담당자 메일</div>
+        <div class="sub" style="margin:6px 0 12px;">회사 메일은 @lxhausys.com 도메인만 허용</div>
+        <label>회사 담당자 메일</label>
+        <input type="email" id="managerEmail" placeholder="예: user@lxhausys.com" />
+        <div class="inline-note">협력사 발송 시 회사 메일 + 협력사 메일로 열리게 구성</div>
+      </div>
+
+      <div class="card">
+        <div class="title" style="font-size:16px;">협력사 설정(로컬 테스트용)</div>
+        <div class="sub" style="margin:6px 0 12px;">실운영 전 시안 확인용. 서버 없이 각 폰에만 저장됨.</div>
+        <div class="row">
+          <div>
+            <label>협력사 이름</label>
+            <input type="text" id="settingPartnerName" placeholder="협력사명" />
+          </div>
+          <div>
+            <label>아이디</label>
+            <input type="text" id="settingPartnerId" placeholder="partner01" />
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <label>패스워드</label>
+          <input type="password" id="settingPartnerPw" placeholder="password" />
+        </div>
+        <div class="actions" style="margin-top:12px;">
+          <button class="btn primary" id="saveSettingsBtn">옵션 저장</button>
+          <button class="btn gray" id="fillDemoBtn">샘플값 넣기</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const APP_KEY = 'inventory_app_state_v1';
+    const defaultState = {
+      user: null,
+      settings: {
+        managerEmail: '',
+        partnerPreset: { name: '', id: '', pw: '' }
+      },
+      records: [],
+      scannedCodes: [],
+      lastCsvName: ''
+    };
+
+    let state = loadState();
+    let scanner = null;
+    let currentEntry = null;
+    let lastCsvBlobUrl = null;
+
+    const screens = {
+      login: document.getElementById('screen-login'),
+      home: document.getElementById('screen-home'),
+      scan: document.getElementById('screen-scan'),
+      entry: document.getElementById('screen-entry'),
+      complete: document.getElementById('screen-complete'),
+      settings: document.getElementById('screen-settings')
+    };
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(APP_KEY);
+        if (!raw) return structuredClone(defaultState);
+        const parsed = JSON.parse(raw);
+        return {
+          ...structuredClone(defaultState),
+          ...parsed,
+          settings: { ...structuredClone(defaultState).settings, ...(parsed.settings || {}) }
+        };
+      } catch (e) {
+        return structuredClone(defaultState);
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(APP_KEY, JSON.stringify(state));
+    }
+
+    function structuredClone(obj) {
+      return JSON.parse(JSON.stringify(obj));
+    }
+
+    function showScreen(name) {
+      Object.values(screens).forEach(el => el.classList.remove('active'));
+      screens[name].classList.add('active');
+      if (name !== 'scan') stopScanner();
+      if (name === 'home') renderHome();
+      if (name === 'complete') renderComplete();
+      if (name === 'settings') renderSettings();
+    }
+
+    function showToast(message, type = 'success') {
+      const el = document.getElementById('toast');
+      el.textContent = message;
+      el.style.background = type === 'error' ? 'rgba(217,45,32,0.96)' : 'rgba(22,163,74,0.96)';
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 900);
+    }
+
+    function vibrate() {
+      if (navigator.vibrate) navigator.vibrate(100);
+    }
+
+    function getInventoryDate() {
+      const now = new Date();
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      if (lastDay.getDay() === 0) lastDay.setDate(lastDay.getDate() - 1);
+      return lastDay.toISOString().slice(0, 10);
+    }
+
+    function getSelectedRole() {
+      return document.querySelector('input[name="role"]:checked').value;
+    }
+
+    function getSelectedMaterialType() {
+      return document.querySelector('input[name="materialType"]:checked').value;
+    }
+
+    function getSelectedUnit() {
+      return getSelectedMaterialType() === '원자재' ? '팔레트' : '박스';
+    }
+
+    function parseCode(raw) {
+      const text = String(raw || '').trim();
+      const parts = text.split(/[|,;/\n]/).map(v => v.trim()).filter(Boolean);
+      let lot = '-';
+      let serial = '-';
+      if (parts.length >= 2) lot = parts[1];
+      if (parts.length >= 3) serial = parts[2];
+      return { code: text, lot, serial };
+    }
+
+    function renderHome() {
+      if (!state.user) return;
+      document.getElementById('homeUserText').textContent = `${state.user.role === 'company' ? '회사' : state.user.partnerName} / ${state.user.userId}`;
+      document.getElementById('inventoryDate').value = getInventoryDate();
+      document.getElementById('savedCount').value = `${state.records.length}건`;
+    }
+
+    function renderSettings() {
+      document.getElementById('managerEmail').value = state.settings.managerEmail || '';
+      document.getElementById('settingPartnerName').value = state.settings.partnerPreset?.name || '';
+      document.getElementById('settingPartnerId').value = state.settings.partnerPreset?.id || '';
+      document.getElementById('settingPartnerPw').value = state.settings.partnerPreset?.pw || '';
+    }
+
+    function renderComplete() {
+      document.getElementById('completeSummary').textContent = `총 ${state.records.length}건 저장됨`;
+      document.getElementById('roleBadge').textContent = state.user?.role === 'company' ? '회사 모드' : '협력사 모드';
+      const list = document.getElementById('recordList');
+      if (!state.records.length) {
+        list.innerHTML = `<div class="card empty">저장된 내역이 아직 없음</div>`;
+        return;
+      }
+      list.innerHTML = state.records.map((r, idx) => {
+        const extra = r.photoName ? `<div class="badge">사진대체: ${escapeHtml(r.photoName)}</div>` : '';
+        return `
+          <div class="card list-item">
+            <div class="list-top">
+              <div>
+                <div class="code">${escapeHtml(r.code)}</div>
+                <div class="muted" style="margin-top:4px;">${escapeHtml(r.scannedAt)}</div>
+              </div>
+              <div class="badge">${escapeHtml(r.unit)} ${escapeHtml(String(r.qty))}</div>
+            </div>
+            <div class="row" style="margin-bottom:8px;">
+              <div class="muted">LOT: ${escapeHtml(r.lot || '-')}</div>
+              <div class="muted">SERIAL: ${escapeHtml(r.serial || '-')}</div>
+            </div>
+            ${extra}
+            <div class="actions" style="margin-top:10px;">
+              <button class="btn small gray" onclick="editRecord(${idx})">수정</button>
+              <button class="btn small danger" onclick="deleteRecord(${idx})">삭제</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    async function startScanner() {
+      showScreen('scan');
+      const readerEl = document.getElementById('reader');
+      readerEl.innerHTML = '';
+      scanner = new Html5Qrcode('reader');
+      try {
+        await scanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          onScanSuccess,
+          () => {}
+        );
+      } catch (e) {
+        showToast('카메라 실행 실패', 'error');
+      }
+    }
+
+    async function stopScanner() {
+      try {
+        if (scanner) {
+          await scanner.stop();
+          await scanner.clear();
+          scanner = null;
+        }
+      } catch (e) {
+        scanner = null;
+      }
+    }
+
+    async function onScanSuccess(decodedText) {
+      const raw = String(decodedText || '').trim();
+      if (!raw) return;
+      if (state.scannedCodes.includes(raw)) {
+        vibrate();
+        showToast('이미 스캔된 자재입니다', 'error');
+        return;
+      }
+      await stopScanner();
+      openEntry({ rawCode: raw, type: 'qr' });
+    }
+
+    function openEntry({ rawCode, photoName = '', type = 'qr' }) {
+      const parsed = parseCode(rawCode);
+      currentEntry = {
+        rawCode: parsed.code,
+        lot: parsed.lot,
+        serial: parsed.serial,
+        unit: getSelectedUnit(),
+        qty: 1,
+        type,
+        photoName
+      };
+      document.getElementById('entryCode').textContent = currentEntry.rawCode;
+      document.getElementById('entryLot').textContent = currentEntry.lot;
+      document.getElementById('entrySerial').textContent = currentEntry.serial;
+      document.getElementById('entryUnit').textContent = currentEntry.unit;
+      document.getElementById('entryUnitLabel').textContent = currentEntry.unit;
+      document.getElementById('qtyInput').value = 1;
+      showScreen('entry');
+    }
+
+    function saveCurrentEntry() {
+      if (!currentEntry) return;
+      const qty = Number(document.getElementById('qtyInput').value || 1);
+      if (!Number.isFinite(qty) || qty < 1) {
+        showToast('수량은 1 이상이어야 함', 'error');
+        return;
+      }
+      const now = new Date();
+      const record = {
+        partnerName: state.user.partnerName || '회사',
+        userId: state.user.userId,
+        role: state.user.role,
+        scannedAt: now.toLocaleString('sv-SE').replace('T', ' ').slice(0, 19),
+        inventoryDate: getInventoryDate(),
+        code: currentEntry.rawCode,
+        lot: currentEntry.lot,
+        serial: currentEntry.serial,
+        qty,
+        unit: currentEntry.unit,
+        photoName: currentEntry.type === 'photo' ? currentEntry.photoName : ''
+      };
+      state.records.unshift(record);
+      state.scannedCodes.push(record.code);
+      saveState();
+      renderHome();
+      vibrate();
+      showToast(`저장되었습니다 (총 ${state.records.length}건)`);
+      currentEntry = null;
+      startScanner();
+    }
+
+    function deleteRecord(idx) {
+      const rec = state.records[idx];
+      if (!rec) return;
+      if (!confirm('이 항목을 삭제할까?')) return;
+      state.records.splice(idx, 1);
+      state.scannedCodes = state.records.map(r => r.code);
+      saveState();
+      renderComplete();
+      renderHome();
+    }
+
+    function editRecord(idx) {
+      const rec = state.records[idx];
+      if (!rec) return;
+      const next = prompt('수량 수정', rec.qty);
+      if (next === null) return;
+      const qty = Number(next);
+      if (!Number.isFinite(qty) || qty < 1) {
+        showToast('수량은 1 이상', 'error');
+        return;
+      }
+      rec.qty = qty;
+      saveState();
+      renderComplete();
+    }
+
+    function buildCsv() {
+      const rows = [
+        ['협력사명', '조사자ID', '조사일시', '조사기준일', '조사자재코드', 'LOT', 'SERIAL', '수량', '단위', '사진대체여부']
+      ];
+      state.records.forEach(r => {
+        rows.push([
+          r.partnerName,
+          r.userId,
+          r.scannedAt,
+          r.inventoryDate,
+          r.code,
+          r.lot,
+          r.serial,
+          r.qty,
+          r.unit,
+          r.photoName ? 'Y' : ''
+        ]);
+      });
+      return '\ufeff' + rows.map(row => row.map(csvEscape).join(',')).join('\n');
+    }
+
+    function csvEscape(value) {
+      const str = String(value ?? '');
+      if (/[",\n]/.test(str)) return '"' + str.replace(/"/g, '""') + '"';
+      return str;
+    }
+
+    function downloadCsv() {
+      const csv = buildCsv();
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      if (lastCsvBlobUrl) URL.revokeObjectURL(lastCsvBlobUrl);
+      lastCsvBlobUrl = URL.createObjectURL(blob);
+      const fileName = `재고조사_${(state.user.partnerName || '회사')}_${getInventoryDate()}.csv`;
+      state.lastCsvName = fileName;
+      saveState();
+      const a = document.createElement('a');
+      a.href = lastCsvBlobUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast('CSV 저장 완료');
+    }
+
+    function sendMail() {
+      const managerEmail = (state.settings.managerEmail || '').trim();
+      if (!managerEmail || !managerEmail.endsWith('@lxhausys.com')) {
+        showToast('설정에서 @lxhausys.com 메일 입력 필요', 'error');
+        return;
+      }
+      const recipients = [];
+      if (state.user.role === 'partner') {
+        recipients.push(managerEmail);
+        if (state.user.emailLike) recipients.push(state.user.emailLike);
+      } else {
+        recipients.push(managerEmail);
+      }
+      const subject = encodeURIComponent(`[재고조사결과] ${getInventoryDate()} / ${state.user.partnerName || '회사'}`);
+      const body = encodeURIComponent(
+        `협력사명: ${state.user.partnerName || '회사'}\n` +
+        `조사자ID: ${state.user.userId}\n` +
+        `조사기준일: ${getInventoryDate()}\n\n` +
+        `재고조사 결과 파일을 첨부해 주세요.\n` +
+        `브라우저 보안상 자동 첨부는 제한될 수 있습니다. 먼저 CSV 저장 후 첨부하면 됩니다.`
+      );
+      window.location.href = `mailto:${recipients.join(',')}?subject=${subject}&body=${body}`;
+    }
+
+    function clearAllRecords() {
+      if (!confirm('저장된 조사 내역을 모두 삭제할까?')) return;
+      state.records = [];
+      state.scannedCodes = [];
+      saveState();
+      renderComplete();
+      renderHome();
+    }
+
+    function saveSettings() {
+      const email = document.getElementById('managerEmail').value.trim();
+      if (email && !email.endsWith('@lxhausys.com')) {
+        showToast('회사 메일은 @lxhausys.com 만 가능', 'error');
+        return;
+      }
+      state.settings.managerEmail = email;
+      state.settings.partnerPreset = {
+        name: document.getElementById('settingPartnerName').value.trim(),
+        id: document.getElementById('settingPartnerId').value.trim(),
+        pw: document.getElementById('settingPartnerPw').value.trim()
+      };
+      saveState();
+      showToast('옵션 저장 완료');
+    }
+
+    function fillDemo() {
+      document.getElementById('managerEmail').value = 'inventory@lxhausys.com';
+      document.getElementById('settingPartnerName').value = 'ABC협력사';
+      document.getElementById('settingPartnerId').value = 'partner01';
+      document.getElementById('settingPartnerPw').value = '1234';
+    }
+
+    // login role toggle
+    document.querySelectorAll('input[name="role"]').forEach(r => {
+      r.addEventListener('change', () => {
+        const role = getSelectedRole();
+        document.getElementById('partner-fields').style.display = role === 'partner' ? '' : 'none';
+        document.getElementById('company-fields').style.display = role === 'company' ? '' : 'none';
+      });
+    });
+
+    document.getElementById('loginBtn').addEventListener('click', () => {
+      const role = getSelectedRole();
+      if (role === 'partner') {
+        const partnerName = document.getElementById('partnerName').value.trim();
+        const userId = document.getElementById('userId').value.trim();
+        const pw = document.getElementById('partnerPw').value.trim();
+        if (!partnerName || !userId) {
+          showToast('협력사명과 조사자 ID 입력 필요', 'error');
+          return;
+        }
+        state.user = {
+          role,
+          partnerName,
+          userId,
+          pw,
+          emailLike: userId.includes('@') ? userId : ''
+        };
+      } else {
+        const companyId = document.getElementById('companyId').value.trim();
+        const companyPw = document.getElementById('companyPw').value.trim();
+        if (!companyId || !companyPw) {
+          showToast('회사 ID/PW 입력 필요', 'error');
+          return;
+        }
+        state.user = {
+          role,
+          partnerName: '회사',
+          userId: companyId,
+          pw: companyPw,
+          emailLike: companyId.includes('@') ? companyId : ''
+        };
+      }
+      saveState();
+      renderHome();
+      showScreen('home');
+    });
+
+    document.getElementById('scanBtn').addEventListener('click', startScanner);
+    document.getElementById('backHomeFromScan').addEventListener('click', () => showScreen('home'));
+    document.getElementById('backToScanBtn').addEventListener('click', startScanner);
+    document.getElementById('backHomeFromComplete').addEventListener('click', () => showScreen('home'));
+    document.getElementById('backHomeFromSettings').addEventListener('click', () => showScreen('home'));
+
+    document.getElementById('completeBtn').addEventListener('click', () => showScreen('complete'));
+    document.getElementById('completeBtnScan').addEventListener('click', () => showScreen('complete'));
+    document.getElementById('completeBtnEntry').addEventListener('click', () => showScreen('complete'));
+    document.getElementById('openSettingsBtn').addEventListener('click', () => showScreen('settings'));
+
+    document.getElementById('minusBtn').addEventListener('click', () => {
+      const el = document.getElementById('qtyInput');
+      const next = Math.max(1, Number(el.value || 1) - 1);
+      el.value = next;
+    });
+    document.getElementById('plusBtn').addEventListener('click', () => {
+      const el = document.getElementById('qtyInput');
+      const next = Math.max(1, Number(el.value || 1) + 1);
+      el.value = next;
+    });
+    document.getElementById('saveEntryBtn').addEventListener('click', saveCurrentEntry);
+
+    document.getElementById('photoFallbackBtn').addEventListener('click', () => {
+      document.getElementById('photoInput').click();
+    });
+    document.getElementById('photoInput').addEventListener('change', e => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const pseudoCode = `PHOTO-${Date.now()}`;
+      openEntry({ rawCode: pseudoCode, photoName: file.name, type: 'photo' });
+      e.target.value = '';
+    });
+
+    document.getElementById('exportCsvBtn').addEventListener('click', downloadCsv);
+    document.getElementById('sendMailBtn').addEventListener('click', sendMail);
+    document.getElementById('clearAllBtn').addEventListener('click', clearAllRecords);
+    document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+    document.getElementById('fillDemoBtn').addEventListener('click', fillDemo);
+
+    window.editRecord = editRecord;
+    window.deleteRecord = deleteRecord;
+
+    // boot
+    if (state.user) {
+      renderHome();
+      showScreen('home');
+    } else {
+      showScreen('login');
+    }
+  </script>
+</body>
+</html>
