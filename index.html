@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>재고조사 앱 MVP</title>
+  <title>협력사 재고 조사 간편앱</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
     :root {
@@ -49,6 +49,19 @@
       border-radius: 12px; padding: 12px; background: #fff; color: var(--text); margin-bottom: 0;
     }
     .segment input { width: auto; }
+    .login-hero { text-align: center; padding: 20px 18px; }
+    .login-hero .title { font-size: 24px; font-weight: 800; }
+    .login-hero .sub { margin-top: 8px; font-size: 14px; line-height: 1.5; }
+    .role-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0 18px; }
+    .role-card {
+      border: 2px solid var(--line); border-radius: 16px; background: #fff; padding: 16px 10px; text-align: center; cursor: pointer;
+      transition: all .15s ease;
+    }
+    .role-card.selected { border-color: var(--primary); background: #eef4ff; box-shadow: 0 4px 14px rgba(31,79,143,.12); }
+    .role-card .icon-wrap { height: 58px; display:flex; align-items:center; justify-content:center; margin-bottom: 10px; }
+    .role-card img { max-width: 58px; max-height: 58px; object-fit: contain; }
+    .role-card .role-name { font-weight: 800; font-size: 15px; }
+    .role-hidden { display:none; }
     .hero-btn { font-size: 18px; font-weight: 800; padding: 18px; }
     .topbar {
       display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px;
@@ -87,16 +100,32 @@
   <div class="toast" id="toast"></div>
   <div class="app">
     <section class="screen active" id="screen-login">
-      <div class="card">
-        <div class="title">재고조사 로그인</div>
-        <div class="sub" style="margin-top:6px;">가볍게 테스트할 수 있는 무서버 MVP 버전</div>
+      <div class="card login-hero">
+        <div class="title">[협력사 재고 조사 간편앱]</div>
+        <div class="sub">모바일 전용 간단 재고 조사 기록/전송 기능 앱</div>
       </div>
 
       <div class="card">
         <label>로그인 구분</label>
-        <div class="segment" style="margin-bottom:14px;">
-          <label><input type="radio" name="role" value="partner" checked> 협력사</label>
-          <label><input type="radio" name="role" value="company"> 회사</label>
+        <div class="role-hidden">
+          <input type="radio" name="role" value="partner" checked>
+          <input type="radio" name="role" value="company">
+        </div>
+        <div class="role-cards" style="margin-bottom:18px;">
+          <button type="button" class="role-card selected" data-role="partner" id="rolePartnerCard">
+            <div class="icon-wrap">
+              <svg width="52" height="52" viewBox="0 0 24 24" fill="#111111" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M3 21V9l7-4v4l7-4v16H3zm2-2h12V8.83l-5 2.86V7.17L5 11v8zm2-6h2v2H7v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z"/>
+              </svg>
+            </div>
+            <div class="role-name">협력사</div>
+          </button>
+          <button type="button" class="role-card" data-role="company" id="roleCompanyCard">
+            <div class="icon-wrap">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/LX_Hausys_logo.svg/512px-LX_Hausys_logo.svg.png" alt="LX하우시스 로고">
+            </div>
+            <div class="role-name">LX하우시스</div>
+          </button>
         </div>
 
         <div id="partner-fields">
@@ -116,7 +145,7 @@
 
         <div id="company-fields" style="display:none;">
           <div style="margin-bottom:12px;">
-            <label>회사 ID</label>
+            <label>LX하우시스 ID</label>
             <input type="text" id="companyId" placeholder="예: admin" />
           </div>
           <div style="margin-bottom:12px;">
@@ -689,13 +718,18 @@
       document.getElementById('settingPartnerPw').value = '1234';
     }
 
-    // login role toggle
-    document.querySelectorAll('input[name="role"]').forEach(r => {
-      r.addEventListener('change', () => {
-        const role = getSelectedRole();
-        document.getElementById('partner-fields').style.display = role === 'partner' ? '' : 'none';
-        document.getElementById('company-fields').style.display = role === 'company' ? '' : 'none';
+    function applyRoleUI(role) {
+      document.querySelector('input[name="role"][value="partner"]').checked = role === 'partner';
+      document.querySelector('input[name="role"][value="company"]').checked = role === 'company';
+      document.getElementById('partner-fields').style.display = role === 'partner' ? '' : 'none';
+      document.getElementById('company-fields').style.display = role === 'company' ? '' : 'none';
+      document.querySelectorAll('.role-card').forEach(card => {
+        card.classList.toggle('selected', card.dataset.role === role);
       });
+    }
+
+    document.querySelectorAll('.role-card').forEach(card => {
+      card.addEventListener('click', () => applyRoleUI(card.dataset.role));
     });
 
     document.getElementById('loginBtn').addEventListener('click', () => {
@@ -779,6 +813,7 @@
     window.deleteRecord = deleteRecord;
 
     // boot
+    applyRoleUI('partner');
     if (state.user) {
       renderHome();
       showScreen('home');
