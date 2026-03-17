@@ -1,161 +1,1605 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>협력사 재고 조사 앱</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>협력사 재고 조사 간편앱</title>
 
-<style>
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f4f6f8;
-}
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver/dist/FileSaver.min.js"></script>
 
-.container {
-  padding: 20px;
-}
+  <style>
+    :root{
+      --bg:#f4f6f8;
+      --card:#ffffff;
+      --text:#111827;
+      --sub:#6b7280;
+      --line:#d1d5db;
+      --primary:#0f172a;
+      --primary-2:#1d4ed8;
+      --primary-soft:#eef4ff;
+      --danger:#dc2626;
+      --danger-soft:#fee2e2;
+      --ok:#16a34a;
+      --ok-soft:#dcfce7;
+      --shadow:0 8px 24px rgba(0,0,0,.08);
+      --radius:16px;
+    }
 
-.header {
-  background: #fff;
-  border-radius: 16px;
-  padding: 20px;
-  text-align: center;
-  margin-bottom: 20px;
-}
+    *{ box-sizing:border-box; }
+    html,body{
+      margin:0;
+      padding:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    }
 
-.header h1 {
-  margin: 0;
-  font-size: 20px;
-}
+    body{
+      padding:16px;
+      -webkit-tap-highlight-color: transparent;
+    }
 
-.header p {
-  margin-top: 8px;
-  color: #666;
-  font-size: 14px;
-}
+    .app{
+      max-width:480px;
+      margin:0 auto;
+    }
 
-.card {
-  background: #fff;
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
+    .screen{ display:none; }
+    .screen.active{ display:block; }
 
-.card-title {
-  margin-bottom: 12px;
-  font-weight: bold;
-}
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:18px;
+      margin-bottom:14px;
+    }
 
-.select-wrap {
-  display: flex;
-  gap: 10px;
-}
+    .title-wrap{
+      text-align:center;
+      margin-bottom:14px;
+    }
 
-.select-card {
-  flex: 1;
-  border: 2px solid #ddd;
-  border-radius: 16px;
-  padding: 15px;
-  text-align: center;
-  cursor: pointer;
-}
+    .title-wrap h1{
+      margin:0 0 6px 0;
+      font-size:22px;
+      line-height:1.25;
+      font-weight:800;
+    }
 
-.select-card.active {
-  border-color: #2b6cb0;
-  background: #eef4ff;
-}
+    .title-wrap p{
+      margin:0;
+      color:var(--sub);
+      font-size:13px;
+      line-height:1.45;
+    }
 
-.select-card img {
-  width: 50px;
-  margin-bottom: 10px;
-}
+    .label{
+      display:block;
+      font-size:13px;
+      font-weight:700;
+      margin-bottom:6px;
+    }
 
-.input {
-  width: 100%;
-  padding: 14px;
-  margin-top: 10px;
-  border-radius: 12px;
-  border: 1px solid #ddd;
-  font-size: 14px;
-}
+    .input, .textarea, .select{
+      width:100%;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:13px 14px;
+      font-size:15px;
+      outline:none;
+      background:#fff;
+    }
 
-.button {
-  width: 100%;
-  margin-top: 20px;
-  padding: 16px;
-  background: #0f172a;
-  color: white;
-  border: none;
-  border-radius: 14px;
-  font-size: 16px;
-  font-weight: bold;
-}
+    .input:focus, .textarea:focus, .select:focus{
+      border-color:var(--primary-2);
+      box-shadow:0 0 0 4px rgba(29,78,216,.1);
+    }
 
-.footer {
-  background: #fff;
-  border-radius: 16px;
-  padding: 16px;
-  font-size: 13px;
-  color: #666;
-}
-</style>
+    .row{
+      display:flex;
+      gap:10px;
+    }
 
+    .row > *{ flex:1; }
+
+    .btn{
+      width:100%;
+      border:none;
+      border-radius:14px;
+      padding:15px 16px;
+      font-size:16px;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .btn-primary{ background:var(--primary); color:#fff; }
+    .btn-secondary{ background:#fff; color:var(--text); border:1px solid var(--line); }
+    .btn-danger{ background:var(--danger); color:#fff; }
+    .btn-ok{ background:var(--ok); color:#fff; }
+
+    .btn-sm{
+      border:none;
+      border-radius:10px;
+      padding:10px 12px;
+      font-size:13px;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin-bottom:12px;
+    }
+
+    .topbar-left, .topbar-right{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .ghost-btn{
+      border:none;
+      background:#fff;
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:13px;
+      font-weight:800;
+      box-shadow:var(--shadow);
+      cursor:pointer;
+    }
+
+    .ghost-btn.red{ background:var(--danger); color:#fff; }
+    .ghost-btn.blue{ background:var(--primary-2); color:#fff; }
+    .ghost-btn.gray{ background:#fff; color:var(--text); border:1px solid var(--line); }
+
+    .select-wrap{
+      display:flex;
+      gap:12px;
+      margin-top:10px;
+    }
+
+    .select-card{
+      flex:1;
+      border:2px solid var(--line);
+      border-radius:16px;
+      padding:14px 12px;
+      text-align:center;
+      background:#fff;
+      cursor:pointer;
+      transition:.15s ease;
+      user-select:none;
+    }
+
+    .select-card.active{
+      border-color:var(--primary-2);
+      background:var(--primary-soft);
+    }
+
+    .select-card .logo-box{
+      width:64px;
+      height:64px;
+      margin:0 auto 8px auto;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .select-card .logo-box img{
+      max-width:64px;
+      max-height:64px;
+      object-fit:contain;
+      display:block;
+    }
+
+    .select-card .card-text{
+      font-size:15px;
+      font-weight:800;
+    }
+
+    .factory-icon{
+      width:58px;
+      height:58px;
+      display:block;
+    }
+
+    .muted{
+      color:var(--sub);
+      font-size:13px;
+    }
+
+    .section-title{
+      font-size:15px;
+      font-weight:800;
+      margin:0 0 10px 0;
+    }
+
+    .radio-wrap{
+      display:flex;
+      gap:10px;
+      margin-top:10px;
+    }
+
+    .radio-chip{
+      flex:1;
+      border:2px solid var(--line);
+      border-radius:999px;
+      padding:12px 14px;
+      font-size:14px;
+      font-weight:800;
+      text-align:center;
+      background:#fff;
+      cursor:pointer;
+    }
+
+    .radio-chip.active{
+      border-color:var(--primary-2);
+      background:var(--primary-soft);
+      color:var(--primary-2);
+    }
+
+    #reader{
+      width:100%;
+      overflow:hidden;
+      border-radius:18px;
+      background:#000;
+      min-height:320px;
+    }
+
+    .camera-guide{
+      color:#fff;
+      text-align:center;
+      font-size:13px;
+      margin-top:12px;
+    }
+
+    .scanner-actions{
+      display:flex;
+      gap:10px;
+      margin-top:12px;
+    }
+
+    .scanner-actions .btn-sm{
+      flex:1;
+    }
+
+    .qty-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin-bottom:10px;
+    }
+
+    .qty-title{
+      font-size:18px;
+      font-weight:900;
+    }
+
+    .code-box{
+      background:#f8fafc;
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      padding:14px;
+      margin-bottom:14px;
+    }
+
+    .code-item{
+      font-size:14px;
+      margin-bottom:6px;
+      word-break:break-all;
+    }
+
+    .code-item:last-child{ margin-bottom:0; }
+
+    .qty-wrap{
+      text-align:center;
+      margin:18px 0;
+    }
+
+    .qty-label{
+      font-size:14px;
+      color:var(--sub);
+      margin-bottom:10px;
+    }
+
+    .qty-control{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:16px;
+    }
+
+    .qty-btn{
+      width:54px;
+      height:54px;
+      border-radius:16px;
+      border:none;
+      background:#111827;
+      color:#fff;
+      font-size:24px;
+      font-weight:900;
+      cursor:pointer;
+    }
+
+    .qty-value{
+      min-width:88px;
+      padding:14px 10px;
+      border-radius:16px;
+      background:#fff;
+      border:2px solid var(--line);
+      font-size:28px;
+      font-weight:900;
+      line-height:1;
+      cursor:pointer;
+      user-select:none;
+    }
+
+    .save-hint{
+      text-align:center;
+      font-size:12px;
+      color:var(--sub);
+      margin-top:8px;
+    }
+
+    .list{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .list-item{
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      padding:12px;
+      background:#fff;
+    }
+
+    .list-top{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:flex-start;
+      margin-bottom:10px;
+    }
+
+    .list-code{
+      font-size:14px;
+      font-weight:900;
+      word-break:break-all;
+      margin-bottom:4px;
+    }
+
+    .list-sub{
+      color:var(--sub);
+      font-size:12px;
+      line-height:1.4;
+    }
+
+    .tiny-btn{
+      border:none;
+      border-radius:10px;
+      padding:8px 10px;
+      font-size:12px;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .tiny-btn.red{ background:var(--danger-soft); color:var(--danger); }
+    .tiny-btn.gray{ background:#f3f4f6; color:#111827; }
+
+    .list-bottom{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+    }
+
+    .inline-qty{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .inline-qty button{
+      width:34px;
+      height:34px;
+      border:none;
+      border-radius:10px;
+      background:#111827;
+      color:#fff;
+      font-size:18px;
+      font-weight:900;
+    }
+
+    .inline-qty .v{
+      min-width:54px;
+      text-align:center;
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:8px 10px;
+      font-weight:900;
+      cursor:pointer;
+      background:#fff;
+    }
+
+    .option-block{
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      padding:14px;
+      margin-top:12px;
+      background:#fff;
+    }
+
+    .partner-row{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      padding:8px 0;
+      border-bottom:1px dashed #e5e7eb;
+      font-size:13px;
+    }
+
+    .partner-row:last-child{ border-bottom:none; }
+
+    .tag{
+      display:inline-block;
+      padding:5px 8px;
+      border-radius:999px;
+      background:#eef2ff;
+      color:#3730a3;
+      font-size:11px;
+      font-weight:800;
+      margin-right:4px;
+    }
+
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:24px;
+      transform:translateX(-50%);
+      background:rgba(17,24,39,.92);
+      color:#fff;
+      padding:12px 16px;
+      border-radius:999px;
+      font-size:13px;
+      font-weight:800;
+      opacity:0;
+      pointer-events:none;
+      transition:.2s ease;
+      z-index:9999;
+      max-width:90%;
+      text-align:center;
+    }
+
+    .toast.show{ opacity:1; }
+
+    .helper{
+      font-size:12px;
+      color:var(--sub);
+      margin-top:6px;
+      line-height:1.45;
+    }
+
+    .divider{
+      height:1px;
+      background:#e5e7eb;
+      margin:14px 0;
+    }
+
+    .hidden-input{ display:none; }
+
+    .summary-box{
+      background:#f8fafc;
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      padding:12px;
+      margin-bottom:12px;
+      font-size:13px;
+      line-height:1.5;
+    }
+  </style>
 </head>
-
 <body>
+  <div class="app">
 
-<div class="container">
+    <!-- 로그인 -->
+    <section id="loginScreen" class="screen active">
+      <div class="card">
+        <div class="title-wrap">
+          <h1>[협력사 재고 조사 간편앱]</h1>
+          <p>모바일 전용 간단 재고 조사 기록/전송 기능 앱</p>
+        </div>
 
-  <!-- 상단 -->
-  <div class="header">
-    <h1>[협력사 재고 조사 간편앱]</h1>
-    <p>모바일 전용 간단 재고 조사 기록/전송 기능 앱</p>
-  </div>
+        <div class="section-title">로그인 구분</div>
+        <div class="select-wrap">
+          <div class="select-card active" id="rolePartnerCard" onclick="selectRole('partner')">
+            <div class="logo-box">
+              <svg class="factory-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M3 21V9.8L8.5 7v3.2L14 7v3.2L21 6.8V21H3Z" fill="#111111"/>
+                <path d="M7 17H9V19H7V17ZM11 17H13V19H11V17ZM15 17H17V19H15V17ZM7 13H9V15H7V13ZM15 13H17V15H15V13Z" fill="white"/>
+              </svg>
+            </div>
+            <div class="card-text">협력사</div>
+          </div>
 
-  <!-- 로그인 -->
-  <div class="card">
-    <div class="card-title">로그인 구분</div>
+          <div class="select-card" id="roleLxCard" onclick="selectRole('lx')">
+            <div class="logo-box">
+              <img
+                src="https://raw.githubusercontent.com/sksguy80-droid/lx_stock/main/IMG_1377.jpeg"
+                alt="LX하우시스 로고"
+              />
+            </div>
+            <div class="card-text">LX하우시스</div>
+          </div>
+        </div>
 
-    <div class="select-wrap">
+        <div style="margin-top:14px;">
+          <label class="label" for="partnerNameInput">협력사명</label>
+          <input id="partnerNameInput" class="input" placeholder="예: ABC협력사" />
+        </div>
 
-      <!-- 협력사 -->
-      <div class="select-card active" onclick="selectType(this)">
-        <img src="https://cdn.jsdelivr.net/npm/@tabler/icons/icons/building-factory-2.svg">
-        <div>협력사</div>
+        <div style="margin-top:12px;">
+          <label class="label" for="userIdInput">조사자 ID</label>
+          <input id="userIdInput" class="input" placeholder="예: user01" />
+        </div>
+
+        <div style="margin-top:12px;">
+          <label class="label" for="passwordInput">비밀번호</label>
+          <input id="passwordInput" class="input" type="password" placeholder="비밀번호 입력" />
+        </div>
+
+        <div style="margin-top:12px;">
+          <label class="label" for="partnerEmailInput">협력사 이메일(선택)</label>
+          <input id="partnerEmailInput" class="input" type="email" placeholder="예: partner@company.com" />
+        </div>
+
+        <div class="helper">
+          무서버 MVP 버전입니다. 협력사 계정 정보와 옵션은 각 휴대폰에 로컬 저장됩니다.
+        </div>
+
+        <button class="btn btn-primary" style="margin-top:16px;" onclick="handleLogin()">재고 조사 시작</button>
+      </div>
+    </section>
+
+    <!-- 메인 -->
+    <section id="mainScreen" class="screen">
+      <div class="topbar">
+        <div class="topbar-left">
+          <button class="ghost-btn gray" onclick="openSettings()">설정</button>
+        </div>
+        <div class="topbar-right">
+          <button class="ghost-btn red" onclick="finishSurvey()">조사 완료</button>
+        </div>
       </div>
 
-      <!-- LX -->
-      <div class="select-card" onclick="selectType(this)">
-        <img src="https://raw.githubusercontent.com/sksguy80-droid/lx_stock/main/IMG_1377.jpeg">
-        <div>LX하우시스</div>
+      <div class="card">
+        <div class="section-title">조사 정보</div>
+        <div class="summary-box">
+          <div><strong id="summaryRole">협력사</strong></div>
+          <div id="summaryPartner">협력사명: -</div>
+          <div id="summaryUser">조사자 ID: -</div>
+          <div id="summaryDate">재고조사 기준일: -</div>
+        </div>
+
+        <div class="section-title">자재 구분</div>
+        <div class="radio-wrap">
+          <div id="materialBoxChip" class="radio-chip active" onclick="setMaterialType('box')">부자재 (박스)</div>
+          <div id="materialPalletChip" class="radio-chip" onclick="setMaterialType('pallet')">원자재 (팔레트)</div>
+        </div>
+
+        <button class="btn btn-primary" style="margin-top:18px;" onclick="openScannerScreen()">📷 스캔 / 사진찍기</button>
+
+        <div class="divider"></div>
+
+        <div class="summary-box">
+          <div><strong>현재 누적</strong></div>
+          <div id="quickCount">총 0건</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 스캐너 -->
+    <section id="scannerScreen" class="screen">
+      <div class="topbar">
+        <div class="topbar-left">
+          <button class="ghost-btn gray" onclick="backToMainFromScanner()">← 메인</button>
+        </div>
+        <div class="topbar-right">
+          <button class="ghost-btn red" onclick="finishSurvey()">조사 완료</button>
+        </div>
       </div>
 
-    </div>
+      <div class="card">
+        <div class="section-title">재고 스캔</div>
+        <div id="reader"></div>
+        <div class="camera-guide">QR을 카메라 중앙에 맞춰주세요.</div>
 
-    <input class="input" placeholder="협력사명 (예: ABC협력사)">
-    <input class="input" placeholder="조사자 ID (예: user01)">
-    <input class="input" type="password" placeholder="비밀번호 (테스트용)">
+        <div class="scanner-actions">
+          <button class="btn-sm" onclick="triggerPhotoCapture()">바코드 없음 / 사진찍기</button>
+          <button class="btn-sm" onclick="manualCodeInput()">코드 직접입력</button>
+        </div>
 
-    <button class="button">로그인</button>
+        <div class="helper">
+          QR 인식 시 자동으로 수량 입력 화면으로 이동합니다. 저장 후 즉시 다시 카메라가 켜집니다.
+        </div>
+
+        <input id="photoInput" class="hidden-input" type="file" accept="image/*" capture="environment" multiple />
+      </div>
+    </section>
+
+    <!-- 수량 입력 -->
+    <section id="qtyScreen" class="screen">
+      <div class="topbar">
+        <div class="topbar-left">
+          <button class="ghost-btn gray" onclick="returnToScannerFromQty()">← 재고 스캔</button>
+        </div>
+        <div class="topbar-right">
+          <button class="ghost-btn red" onclick="finishSurvey()">조사 완료</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="qty-head">
+          <div class="qty-title">수량 입력</div>
+          <div class="tag" id="qtyMethodTag">QR</div>
+        </div>
+
+        <div class="code-box">
+          <div class="code-item"><strong>조사자재코드:</strong> <span id="qtyRawCode">-</span></div>
+          <div class="code-item"><strong>자재코드:</strong> <span id="qtyCode">-</span></div>
+          <div class="code-item"><strong>LOT:</strong> <span id="qtyLot">-</span></div>
+          <div class="code-item"><strong>일련번호:</strong> <span id="qtySerial">-</span></div>
+        </div>
+
+        <div class="qty-wrap">
+          <div class="qty-label" id="qtyUnitLabel">수량 (박스)</div>
+          <div class="qty-control">
+            <button class="qty-btn" onclick="changeQty(-1)">−</button>
+            <div class="qty-value" id="qtyValue" onclick="directQtyInput()">1</div>
+            <button class="qty-btn" onclick="changeQty(1)">＋</button>
+          </div>
+          <div class="save-hint">가운데 숫자를 터치하면 직접 입력할 수 있습니다.</div>
+        </div>
+
+        <button class="btn btn-ok" onclick="saveCurrentEntry()">저장하기</button>
+      </div>
+    </section>
+
+    <!-- 결과 -->
+    <section id="resultScreen" class="screen">
+      <div class="topbar">
+        <div class="topbar-left">
+          <button class="ghost-btn gray" onclick="backToMainFromResult()">← 메인</button>
+        </div>
+        <div class="topbar-right">
+          <button class="ghost-btn blue" onclick="openScannerScreen()">추가 스캔</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">조사 결과</div>
+        <div class="summary-box">
+          <div id="resultSummary1">총 0건</div>
+          <div id="resultSummary2">저장 후 메일 전송 또는 엑셀 저장 가능</div>
+        </div>
+
+        <div id="resultList" class="list"></div>
+
+        <div style="margin-top:14px;" class="row">
+          <button class="btn btn-secondary" onclick="downloadExcelOnly()">엑셀 저장</button>
+          <button class="btn btn-primary" onclick="sendResultByMail()">메일 전송</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 설정 -->
+    <section id="settingsScreen" class="screen">
+      <div class="topbar">
+        <div class="topbar-left">
+          <button class="ghost-btn gray" onclick="closeSettings()">← 뒤로</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">기본 설정</div>
+
+        <div class="option-block">
+          <label class="label" for="companyEmailsInput">회사 담당자 이메일</label>
+          <textarea id="companyEmailsInput" class="textarea" rows="3" placeholder="예: a@lxhausys.com, b@lxhausys.com"></textarea>
+          <div class="helper">@lxhausys.com 도메인만 저장됩니다. 여러 명은 쉼표(,)로 구분하세요.</div>
+        </div>
+
+        <div class="option-block">
+          <label class="label" for="lxAdminIdInput">LX하우시스 로그인 ID</label>
+          <input id="lxAdminIdInput" class="input" placeholder="기본값: admin" />
+          <label class="label" for="lxAdminPwInput" style="margin-top:10px;">LX하우시스 로그인 비밀번호</label>
+          <input id="lxAdminPwInput" class="input" type="password" placeholder="기본값: 1234" />
+        </div>
+
+        <div class="option-block">
+          <div class="section-title" style="margin-bottom:8px;">협력사 설정 (로컬 저장)</div>
+
+          <input id="optPartnerName" class="input" placeholder="협력사명" />
+          <input id="optPartnerId" class="input" placeholder="아이디" style="margin-top:8px;" />
+          <input id="optPartnerPw" class="input" type="password" placeholder="비밀번호" style="margin-top:8px;" />
+          <input id="optPartnerEmail" class="input" type="email" placeholder="협력사 이메일(선택)" style="margin-top:8px;" />
+
+          <button class="btn btn-secondary" style="margin-top:10px;" onclick="addPartnerOption()">협력사 추가</button>
+
+          <div id="partnerListWrap" style="margin-top:10px;"></div>
+        </div>
+
+        <button class="btn btn-primary" onclick="saveSettings()">설정 저장</button>
+      </div>
+    </section>
   </div>
 
-  <!-- 옵션 -->
-  <div class="footer">
-    <b>옵션 미리 보기</b><br><br>
-    로그인 후 우측 상단 설정에서 담당자 메일, 협력사 정보 등을 입력 가능
-  </div>
+  <div id="toast" class="toast"></div>
 
-</div>
+  <script>
+    const state = {
+      role: 'partner',
+      materialType: 'box',
+      userId: '',
+      partnerName: '',
+      partnerEmail: '',
+      inventoryDate: '',
+      records: [],
+      draftKey: '',
+      currentEntry: null,
+      scanner: null,
+      scanning: false
+    };
 
-<script>
-function selectType(el) {
-  document.querySelectorAll('.select-card').forEach(e => {
-    e.classList.remove('active');
-  });
-  el.classList.add('active');
-}
-</script>
+    const defaultSettings = {
+      companyEmails: '',
+      lxAdminId: 'admin',
+      lxAdminPw: '1234',
+      partners: []
+    };
 
+    let settings = loadSettings();
+
+    // ---------- 공통 ----------
+    function qs(id){ return document.getElementById(id); }
+
+    function showScreen(screenId){
+      document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+      qs(screenId).classList.add('active');
+    }
+
+    function showToast(msg, ms=900){
+      const t = qs('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => t.classList.remove('show'), ms);
+    }
+
+    function vibrateShort(){
+      if (navigator.vibrate) navigator.vibrate(60);
+    }
+
+    function escapeHtml(str=''){
+      return String(str)
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'","&#39;");
+    }
+
+    function ymd(date=new Date()){
+      const y = date.getFullYear();
+      const m = String(date.getMonth()+1).padStart(2,'0');
+      const d = String(date.getDate()).padStart(2,'0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function ymdhm(date=new Date()){
+      const y = date.getFullYear();
+      const m = String(date.getMonth()+1).padStart(2,'0');
+      const d = String(date.getDate()).padStart(2,'0');
+      const hh = String(date.getHours()).padStart(2,'0');
+      const mm = String(date.getMinutes()).padStart(2,'0');
+      return `${y}-${m}-${d} ${hh}:${mm}`;
+    }
+
+    function compactNow(){
+      const d = new Date();
+      return [
+        d.getFullYear(),
+        String(d.getMonth()+1).padStart(2,'0'),
+        String(d.getDate()).padStart(2,'0'),
+        '_',
+        String(d.getHours()).padStart(2,'0'),
+        String(d.getMinutes()).padStart(2,'0'),
+        String(d.getSeconds()).padStart(2,'0')
+      ].join('');
+    }
+
+    function getInventoryDate(){
+      const now = new Date();
+      const lastDay = new Date(now.getFullYear(), now.getMonth()+1, 0);
+      if (lastDay.getDay() === 0) lastDay.setDate(lastDay.getDate()-1);
+      return ymd(lastDay);
+    }
+
+    function unitText(){
+      return state.materialType === 'pallet' ? '팔레트' : '박스';
+    }
+
+    function materialText(){
+      return state.materialType === 'pallet' ? '원자재' : '부자재';
+    }
+
+    function generateDraftKey(){
+      const base = `${state.role}_${state.partnerName || 'lx'}_${state.userId}_${state.inventoryDate}`;
+      return `inventoryDraft_${base}`;
+    }
+
+    function loadSettings(){
+      try{
+        const raw = localStorage.getItem('inventoryAppSettings');
+        if(!raw) return { ...defaultSettings };
+        const obj = JSON.parse(raw);
+        return {
+          companyEmails: obj.companyEmails || '',
+          lxAdminId: obj.lxAdminId || 'admin',
+          lxAdminPw: obj.lxAdminPw || '1234',
+          partners: Array.isArray(obj.partners) ? obj.partners : []
+        };
+      }catch{
+        return { ...defaultSettings };
+      }
+    }
+
+    function persistSettings(){
+      localStorage.setItem('inventoryAppSettings', JSON.stringify(settings));
+    }
+
+    function persistDraft(){
+      if(!state.draftKey) return;
+      localStorage.setItem(state.draftKey, JSON.stringify({
+        role: state.role,
+        materialType: state.materialType,
+        userId: state.userId,
+        partnerName: state.partnerName,
+        partnerEmail: state.partnerEmail,
+        inventoryDate: state.inventoryDate,
+        records: state.records
+      }));
+      updateQuickCount();
+    }
+
+    function loadDraftIfExists(){
+      state.draftKey = generateDraftKey();
+      const raw = localStorage.getItem(state.draftKey);
+      if(!raw){
+        state.records = [];
+        return;
+      }
+      try{
+        const draft = JSON.parse(raw);
+        state.records = Array.isArray(draft.records) ? draft.records : [];
+      }catch{
+        state.records = [];
+      }
+    }
+
+    function clearDraft(){
+      if(state.draftKey){
+        localStorage.removeItem(state.draftKey);
+      }
+    }
+
+    function getUniqueKeys(){
+      return new Set(
+        state.records
+          .filter(r => r.method === 'QR')
+          .map(r => r.rawCode)
+      );
+    }
+
+    // ---------- 로그인 ----------
+    function selectRole(role){
+      state.role = role;
+      qs('rolePartnerCard').classList.toggle('active', role === 'partner');
+      qs('roleLxCard').classList.toggle('active', role === 'lx');
+    }
+
+    function handleLogin(){
+      const partnerName = qs('partnerNameInput').value.trim();
+      const userId = qs('userIdInput').value.trim();
+      const password = qs('passwordInput').value.trim();
+      const partnerEmail = qs('partnerEmailInput').value.trim();
+
+      if(!userId || !password){
+        showToast('조사자 ID와 비밀번호를 입력하세요.', 1200);
+        return;
+      }
+
+      if(state.role === 'partner'){
+        if(!partnerName){
+          showToast('협력사명을 입력하세요.', 1200);
+          return;
+        }
+
+        if(settings.partners.length > 0){
+          const found = settings.partners.find(p => p.id === userId && p.pw === password);
+          if(!found){
+            showToast('협력사 ID 또는 비밀번호가 맞지 않습니다.', 1400);
+            return;
+          }
+          state.partnerName = found.name || partnerName;
+          state.partnerEmail = found.email || partnerEmail;
+        }else{
+          state.partnerName = partnerName;
+          state.partnerEmail = partnerEmail;
+        }
+      }else{
+        const lxId = settings.lxAdminId || 'admin';
+        const lxPw = settings.lxAdminPw || '1234';
+        if(userId !== lxId || password !== lxPw){
+          showToast('LX하우시스 로그인 정보가 맞지 않습니다.', 1400);
+          return;
+        }
+        state.partnerName = 'LX하우시스';
+        state.partnerEmail = '';
+      }
+
+      state.userId = userId;
+      state.inventoryDate = getInventoryDate();
+      state.materialType = 'box';
+
+      loadDraftIfExists();
+      fillMainSummary();
+      updateMaterialUI();
+      updateQuickCount();
+      showScreen('mainScreen');
+    }
+
+    function fillMainSummary(){
+      qs('summaryRole').textContent = state.role === 'lx' ? 'LX하우시스' : '협력사';
+      qs('summaryPartner').textContent = `협력사명: ${state.partnerName || '-'}`;
+      qs('summaryUser').textContent = `조사자 ID: ${state.userId || '-'}`;
+      qs('summaryDate').textContent = `재고조사 기준일: ${state.inventoryDate || '-'}`;
+    }
+
+    // ---------- 메인 ----------
+    function setMaterialType(type){
+      state.materialType = type;
+      updateMaterialUI();
+      persistDraft();
+    }
+
+    function updateMaterialUI(){
+      qs('materialBoxChip').classList.toggle('active', state.materialType === 'box');
+      qs('materialPalletChip').classList.toggle('active', state.materialType === 'pallet');
+    }
+
+    function updateQuickCount(){
+      qs('quickCount').textContent = `총 ${state.records.length}건`;
+    }
+
+    // ---------- 스캐너 ----------
+    async function openScannerScreen(){
+      showScreen('scannerScreen');
+      await startScanner();
+    }
+
+    async function backToMainFromScanner(){
+      await stopScanner();
+      showScreen('mainScreen');
+    }
+
+    async function returnToScannerFromQty(){
+      showScreen('scannerScreen');
+      await startScanner();
+    }
+
+    async function startScanner(){
+      if(state.scanning) return;
+
+      try{
+        if(state.scanner){
+          try{ await state.scanner.stop(); }catch{}
+          try{ await state.scanner.clear(); }catch{}
+          state.scanner = null;
+        }
+
+        qs('reader').innerHTML = '';
+        state.scanner = new Html5Qrcode("reader");
+        state.scanning = true;
+
+        await state.scanner.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 230, height: 230 },
+            rememberLastUsedCamera: true,
+            aspectRatio: 1
+          },
+          async (decodedText) => {
+            if(!decodedText) return;
+            const dup = getUniqueKeys().has(decodedText);
+            if(dup){
+              vibrateShort();
+              showToast('이미 스캔된 자재입니다.', 1100);
+              return;
+            }
+            await stopScanner();
+            openQtyEntry({
+              method: 'QR',
+              rawCode: decodedText,
+              photos: []
+            });
+          },
+          () => {}
+        );
+      }catch(err){
+        state.scanning = false;
+        console.error(err);
+        showToast('카메라 시작에 실패했습니다.', 1400);
+      }
+    }
+
+    async function stopScanner(){
+      if(!state.scanner) {
+        state.scanning = false;
+        return;
+      }
+      try{
+        await state.scanner.stop();
+      }catch{}
+      try{
+        await state.scanner.clear();
+      }catch{}
+      state.scanner = null;
+      state.scanning = false;
+    }
+
+    function triggerPhotoCapture(){
+      qs('photoInput').value = '';
+      qs('photoInput').click();
+    }
+
+    qs('photoInput').addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      if(files.length === 0) return;
+
+      await stopScanner();
+
+      const photos = [];
+      for(const file of files){
+        const dataUrl = await fileToDataURL(file);
+        photos.push({
+          name: file.name || `photo_${compactNow()}.jpg`,
+          mime: file.type || 'image/jpeg',
+          dataUrl
+        });
+      }
+
+      const photoCode = `PHOTO-${compactNow()}`;
+      openQtyEntry({
+        method: 'PHOTO',
+        rawCode: photoCode,
+        photos
+      });
+    });
+
+    function manualCodeInput(){
+      const val = prompt('조사자재코드를 입력하세요.');
+      if(!val) return;
+      const trimmed = val.trim();
+      if(!trimmed) return;
+
+      const dup = getUniqueKeys().has(trimmed);
+      if(dup){
+        showToast('이미 스캔된 자재입니다.', 1200);
+        return;
+      }
+
+      stopScanner().then(() => {
+        openQtyEntry({
+          method: 'MANUAL',
+          rawCode: trimmed,
+          photos: []
+        });
+      });
+    }
+
+    function fileToDataURL(file){
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+    }
+
+    // ---------- QR 파싱 ----------
+    function parseRawCode(raw){
+      const txt = String(raw || '').trim();
+      const tokens = txt.split(/[|\n,;/]+/).map(v => v.trim()).filter(Boolean);
+
+      if(tokens.length >= 3){
+        return {
+          code: tokens[0] || txt,
+          lot: tokens[1] || '',
+          serial: tokens[2] || ''
+        };
+      }
+
+      return {
+        code: txt,
+        lot: '',
+        serial: ''
+      };
+    }
+
+    // ---------- 수량 ----------
+    function openQtyEntry(base){
+      const parsed = parseRawCode(base.rawCode);
+      state.currentEntry = {
+        method: base.method,
+        rawCode: base.rawCode,
+        code: parsed.code,
+        lot: parsed.lot,
+        serial: parsed.serial,
+        qty: 1,
+        unit: unitText(),
+        materialType: materialText(),
+        photos: base.photos || [],
+        dateTime: ymdhm(new Date())
+      };
+
+      qs('qtyMethodTag').textContent =
+        base.method === 'PHOTO' ? '사진' :
+        base.method === 'MANUAL' ? '직접입력' : 'QR';
+
+      qs('qtyRawCode').textContent = state.currentEntry.rawCode || '-';
+      qs('qtyCode').textContent = state.currentEntry.code || '-';
+      qs('qtyLot').textContent = state.currentEntry.lot || '-';
+      qs('qtySerial').textContent = state.currentEntry.serial || '-';
+      qs('qtyUnitLabel').textContent = `수량 (${state.currentEntry.unit})`;
+      qs('qtyValue').textContent = String(state.currentEntry.qty);
+
+      showScreen('qtyScreen');
+    }
+
+    function changeQty(delta){
+      if(!state.currentEntry) return;
+      const next = state.currentEntry.qty + delta;
+      if(next < 1) return;
+      state.currentEntry.qty = next;
+      qs('qtyValue').textContent = String(state.currentEntry.qty);
+    }
+
+    function directQtyInput(){
+      if(!state.currentEntry) return;
+      const val = prompt('수량을 입력하세요.', String(state.currentEntry.qty));
+      if(val === null) return;
+      const num = Number(val);
+      if(!Number.isFinite(num) || num < 1){
+        showToast('1 이상의 숫자를 입력하세요.', 1200);
+        return;
+      }
+      state.currentEntry.qty = Math.floor(num);
+      qs('qtyValue').textContent = String(state.currentEntry.qty);
+    }
+
+    async function saveCurrentEntry(){
+      if(!state.currentEntry) return;
+
+      const rec = {
+        id: `REC-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+        role: state.role,
+        partnerName: state.partnerName,
+        userId: state.userId,
+        partnerEmail: state.partnerEmail,
+        inventoryDate: state.inventoryDate,
+        dateTime: state.currentEntry.dateTime,
+        materialType: state.currentEntry.materialType,
+        rawCode: state.currentEntry.rawCode,
+        code: state.currentEntry.code,
+        lot: state.currentEntry.lot,
+        serial: state.currentEntry.serial,
+        qty: state.currentEntry.qty,
+        unit: state.currentEntry.unit,
+        method: state.currentEntry.method,
+        photos: state.currentEntry.photos || []
+      };
+
+      state.records.push(rec);
+      persistDraft();
+      renderResultList();
+      state.currentEntry = null;
+
+      vibrateShort();
+      showToast(`저장되었습니다 (총 ${state.records.length}건)`, 500);
+
+      showScreen('scannerScreen');
+      setTimeout(() => {
+        startScanner();
+      }, 50);
+    }
+
+    // ---------- 결과 ----------
+    async function finishSurvey(){
+      await stopScanner();
+      renderResultList();
+      showScreen('resultScreen');
+    }
+
+    function backToMainFromResult(){
+      fillMainSummary();
+      updateQuickCount();
+      showScreen('mainScreen');
+    }
+
+    function renderResultList(){
+      qs('resultSummary1').textContent = `총 ${state.records.length}건`;
+      qs('resultSummary2').textContent = `${state.partnerName || '-'} / ${state.userId || '-'} / ${state.inventoryDate || '-'}`;
+
+      const wrap = qs('resultList');
+      if(state.records.length === 0){
+        wrap.innerHTML = `<div class="summary-box">저장된 조사 내역이 없습니다.</div>`;
+        return;
+      }
+
+      wrap.innerHTML = state.records.map((r, idx) => {
+        return `
+          <div class="list-item">
+            <div class="list-top">
+              <div>
+                <div class="list-code">${escapeHtml(r.rawCode || '-')}</div>
+                <div class="list-sub">
+                  ${escapeHtml(r.materialType)} / ${escapeHtml(r.unit)}<br>
+                  LOT: ${escapeHtml(r.lot || '-')} / SERIAL: ${escapeHtml(r.serial || '-')}<br>
+                  ${escapeHtml(r.dateTime || '-')} / ${escapeHtml(r.method || '-')}
+                </div>
+              </div>
+              <button class="tiny-btn red" onclick="deleteRecord('${r.id}')">삭제</button>
+            </div>
+
+            <div class="list-bottom">
+              <div class="inline-qty">
+                <button onclick="changeRecordQty('${r.id}', -1)">−</button>
+                <div class="v" onclick="directRecordQty('${r.id}')">${r.qty}</div>
+                <button onclick="changeRecordQty('${r.id}', 1)">＋</button>
+              </div>
+              <div class="tag">${idx + 1}건째</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function findRecord(id){
+      return state.records.find(r => r.id === id);
+    }
+
+    function deleteRecord(id){
+      state.records = state.records.filter(r => r.id !== id);
+      persistDraft();
+      renderResultList();
+      updateQuickCount();
+      showToast('삭제되었습니다.', 700);
+    }
+
+    function changeRecordQty(id, delta){
+      const rec = findRecord(id);
+      if(!rec) return;
+      const next = rec.qty + delta;
+      if(next < 1) return;
+      rec.qty = next;
+      persistDraft();
+      renderResultList();
+    }
+
+    function directRecordQty(id){
+      const rec = findRecord(id);
+      if(!rec) return;
+      const val = prompt('수량을 입력하세요.', String(rec.qty));
+      if(val === null) return;
+      const num = Number(val);
+      if(!Number.isFinite(num) || num < 1){
+        showToast('1 이상의 숫자를 입력하세요.', 1200);
+        return;
+      }
+      rec.qty = Math.floor(num);
+      persistDraft();
+      renderResultList();
+    }
+
+    // ---------- 엑셀 ----------
+    async function buildWorkbookAndFile(){
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('재고조사');
+
+      worksheet.columns = [
+        { header: '협력사명', key: 'partnerName', width: 18 },
+        { header: '조사자ID', key: 'userId', width: 14 },
+        { header: '조사일시', key: 'dateTime', width: 20 },
+        { header: '조사자재코드', key: 'rawCode', width: 30 },
+        { header: '수량', key: 'qty', width: 10 },
+        { header: '단위', key: 'unit', width: 10 }
+      ];
+
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+      state.records.forEach((r) => {
+        worksheet.addRow({
+          partnerName: r.partnerName,
+          userId: r.userId,
+          dateTime: r.dateTime,
+          rawCode: r.rawCode,
+          qty: r.qty,
+          unit: r.unit
+        });
+      });
+
+      worksheet.eachRow((row, rowNumber) => {
+        row.alignment = { vertical: 'middle', horizontal: rowNumber === 1 ? 'center' : 'left', wrapText: true };
+        row.height = rowNumber === 1 ? 22 : 20;
+        row.eachCell(cell => {
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
+          };
+        });
+      });
+
+      // 사진을 조사자재코드 셀 쪽에 겹쳐 넣기
+      for(let i=0; i<state.records.length; i++){
+        const r = state.records[i];
+        if(!r.photos || r.photos.length === 0) continue;
+
+        const rowNumber = i + 2; // header 제외
+        worksheet.getRow(rowNumber).height = 62;
+
+        // 셀 텍스트도 유지
+        worksheet.getCell(`D${rowNumber}`).value = r.rawCode || '';
+
+        r.photos.forEach((p, idx) => {
+          const ext = getImageExtFromDataUrl(p.dataUrl) || 'jpeg';
+          const imageId = workbook.addImage({
+            base64: p.dataUrl,
+            extension: ext
+          });
+
+          worksheet.addImage(imageId, {
+            tl: { col: 3 + (idx * 0.12), row: (rowNumber - 1) + (idx * 0.02) },
+            ext: { width: 52, height: 52 }
+          });
+        });
+      }
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const fileName = `재고조사_${sanitizeFileName(state.partnerName || 'LX')}_${compactNow()}.xlsx`;
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const file = new File([blob], fileName, { type: blob.type });
+
+      return { workbook, blob, file, fileName };
+    }
+
+    function getImageExtFromDataUrl(dataUrl=''){
+      if(dataUrl.includes('image/png')) return 'png';
+      if(dataUrl.includes('image/gif')) return 'gif';
+      return 'jpeg';
+    }
+
+    function sanitizeFileName(name=''){
+      return String(name).replace(/[\\/:*?"<>|]/g, '_');
+    }
+
+    async function downloadExcelOnly(){
+      if(state.records.length === 0){
+        showToast('저장된 조사 내역이 없습니다.', 1200);
+        return;
+      }
+      const { blob, fileName } = await buildWorkbookAndFile();
+      saveAs(blob, fileName);
+      showToast('엑셀 파일을 저장했습니다.', 900);
+    }
+
+    // ---------- 메일 ----------
+    function getRecipientList(){
+      const companyEmails = parseAndValidateCompanyEmails(settings.companyEmails);
+      const recipients = [...companyEmails];
+
+      if(state.role === 'partner' && state.partnerEmail){
+        recipients.push(state.partnerEmail.trim());
+      }
+
+      return [...new Set(recipients.filter(Boolean))];
+    }
+
+    function parseAndValidateCompanyEmails(raw){
+      return String(raw || '')
+        .split(',')
+        .map(v => v.trim())
+        .filter(Boolean)
+        .filter(v => /@lxhausys\.com$/i.test(v));
+    }
+
+    async function sendResultByMail(){
+      if(state.records.length === 0){
+        showToast('저장된 조사 내역이 없습니다.', 1200);
+        return;
+      }
+
+      const recipients = getRecipientList();
+      if(recipients.length === 0){
+        showToast('옵션에서 회사 담당자 이메일을 먼저 설정하세요.', 1500);
+        return;
+      }
+
+      const { blob, file, fileName } = await buildWorkbookAndFile();
+
+      const photoFiles = [];
+      state.records.forEach(r => {
+        (r.photos || []).forEach((p, idx) => {
+          const f = dataUrlToFile(
+            p.dataUrl,
+            p.name || `photo_${idx+1}.jpg`,
+            p.mime || 'image/jpeg'
+          );
+          photoFiles.push(f);
+        });
+      });
+
+      const subject = encodeURIComponent(`[재고조사결과] ${state.inventoryDate} / ${state.partnerName}`);
+      const body = encodeURIComponent(
+`협력사명: ${state.partnerName}
+조사자 ID: ${state.userId}
+조사일시: ${ymdhm(new Date())}
+
+재고조사 결과를 첨부드립니다.`
+      );
+
+      const files = [file, ...photoFiles];
+
+      if (navigator.canShare && navigator.canShare({ files })) {
+        try{
+          await navigator.share({
+            files,
+            title: `재고조사결과_${state.partnerName}`,
+            text: `수신 대상: ${recipients.join(', ')}`
+          });
+          showToast('공유 창이 열렸습니다. 메일 앱을 선택하세요.', 1300);
+          return;
+        }catch(err){
+          console.warn(err);
+        }
+      }
+
+      // fallback: 엑셀 저장 + mailto
+      saveAs(blob, fileName);
+      window.location.href = `mailto:${recipients.join(',')}?subject=${subject}&body=${body}`;
+      showToast('엑셀 저장 후 메일 앱을 엽니다. 첨부는 저장 파일을 선택하세요.', 1800);
+    }
+
+    function dataUrlToFile(dataUrl, fileName, mimeType='image/jpeg'){
+      const arr = dataUrl.split(',');
+      const mime = mimeType || arr[0].match(/:(.*?);/)[1];
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while(n--){
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new File([u8arr], fileName, { type: mime });
+    }
+
+    // ---------- 옵션 ----------
+    function openSettings(){
+      fillSettingsUI();
+      showScreen('settingsScreen');
+    }
+
+    function closeSettings(){
+      showScreen('mainScreen');
+    }
+
+    function fillSettingsUI(){
+      qs('companyEmailsInput').value = settings.companyEmails || '';
+      qs('lxAdminIdInput').value = settings.lxAdminId || 'admin';
+      qs('lxAdminPwInput').value = settings.lxAdminPw || '1234';
+      renderPartnerOptions();
+    }
+
+    function saveSettings(){
+      const companyEmailsRaw = qs('companyEmailsInput').value.trim();
+      const validCompanyEmails = parseAndValidateCompanyEmails(companyEmailsRaw);
+
+      // 입력했는데 유효한 값이 하나도 없으면 막기
+      if(companyEmailsRaw && validCompanyEmails.length === 0){
+        showToast('@lxhausys.com 메일만 저장 가능합니다.', 1500);
+        return;
+      }
+
+      settings.companyEmails = validCompanyEmails.join(', ');
+      settings.lxAdminId = qs('lxAdminIdInput').value.trim() || 'admin';
+      settings.lxAdminPw = qs('lxAdminPwInput').value.trim() || '1234';
+
+      persistSettings();
+      showToast('설정이 저장되었습니다.', 900);
+      closeSettings();
+    }
+
+    function addPartnerOption(){
+      const name = qs('optPartnerName').value.trim();
+      const id = qs('optPartnerId').value.trim();
+      const pw = qs('optPartnerPw').value.trim();
+      const email = qs('optPartnerEmail').value.trim();
+
+      if(!name || !id || !pw){
+        showToast('협력사명, 아이디, 비밀번호를 입력하세요.', 1400);
+        return;
+      }
+
+      if(settings.partners.some(p => p.id === id)){
+        showToast('이미 등록된 아이디입니다.', 1200);
+        return;
+      }
+
+      settings.partners.push({ name, id, pw, email });
+      persistSettings();
+      renderPartnerOptions();
+
+      qs('optPartnerName').value = '';
+      qs('optPartnerId').value = '';
+      qs('optPartnerPw').value = '';
+      qs('optPartnerEmail').value = '';
+
+      showToast('협력사를 추가했습니다.', 900);
+    }
+
+    function removePartnerOption(id){
+      settings.partners = settings.partners.filter(p => p.id !== id);
+      persistSettings();
+      renderPartnerOptions();
+      showToast('삭제되었습니다.', 800);
+    }
+
+    function renderPartnerOptions(){
+      const wrap = qs('partnerListWrap');
+      if(settings.partners.length === 0){
+        wrap.innerHTML = `<div class="helper">저장된 협력사 설정이 없습니다.</div>`;
+        return;
+      }
+
+      wrap.innerHTML = settings.partners.map(p => `
+        <div class="partner-row">
+          <div style="flex:1;">
+            <strong>${escapeHtml(p.name)}</strong><br>
+            <span class="muted">${escapeHtml(p.id)} ${p.email ? '/ ' + escapeHtml(p.email) : ''}</span>
+          </div>
+          <button class="tiny-btn red" onclick="removePartnerOption('${escapeHtml(p.id)}')">삭제</button>
+        </div>
+      `).join('');
+    }
+
+    // ---------- 초기화 ----------
+    window.addEventListener('load', () => {
+      settings = loadSettings();
+      fillSettingsUI();
+      selectRole('partner');
+      updateMaterialUI();
+    });
+  </script>
 </body>
 </html>
