@@ -1,158 +1,870 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>재고 조사 앱</title>
-<script src="https://unpkg.com/@zxing/library@latest"></script>
-<style>
-body{font-family:sans-serif;background:#f3f5f7;margin:0;padding:16px}
-.screen{display:none}
-.active{display:block}
-.card{background:#fff;padding:16px;border-radius:16px;margin-bottom:12px}
-button{padding:14px;border:none;border-radius:10px;font-weight:bold}
-.btn{width:100%;background:#111;color:#fff}
-.input{width:100%;padding:10px;margin-top:6px}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>협력사 재고 조사 간편앱</title>
+
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver/dist/FileSaver.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#f3f5f7;
+      --card:#ffffff;
+      --text:#111827;
+      --sub:#6b7280;
+      --line:#d1d5db;
+      --blue:#2563eb;
+      --blue-soft:#eef4ff;
+      --navy:#0b1535;
+      --green:#16934a;
+      --red:#dc2626;
+      --shadow:0 10px 24px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box}
+    html,body{
+      margin:0;padding:0;background:var(--bg);color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    }
+    body{padding:18px}
+    .app{max-width:520px;margin:0 auto}
+    .screen{display:none}
+    .screen.active{display:block}
+    .card{
+      background:var(--card);
+      border-radius:24px;
+      box-shadow:var(--shadow);
+      padding:20px 18px;
+      margin-bottom:16px;
+    }
+    .hero{text-align:center;padding:28px 18px}
+    .hero h1{margin:0 0 8px;font-size:22px;font-weight:900;line-height:1.25}
+    .hero p{margin:0;color:var(--sub);font-size:14px;line-height:1.5}
+    .section-title{font-size:15px;font-weight:900;margin:0 0 12px}
+    .select-wrap{display:flex;gap:12px}
+    .select-card{
+      flex:1;border:2px solid var(--line);border-radius:20px;background:#fff;
+      min-height:146px;padding:16px 12px;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;cursor:pointer;transition:.15s ease;
+    }
+    .select-card.active{border-color:var(--blue);background:var(--blue-soft)}
+    .logo-box{width:64px;height:64px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+    .card-text{font-size:16px;font-weight:900}
+    .input-label{font-size:14px;font-weight:700;color:#4b5563;margin:14px 0 8px}
+    .input,.select,.textarea{
+      width:100%;padding:15px 16px;border:1px solid var(--line);border-radius:16px;
+      font-size:16px;background:#fff;outline:none;
+    }
+    .input:focus,.select:focus,.textarea:focus{
+      border-color:var(--blue);box-shadow:0 0 0 4px rgba(37,99,235,.1)
+    }
+    .btn{
+      width:100%;border:none;border-radius:18px;padding:17px 16px;
+      font-size:18px;font-weight:900;cursor:pointer
+    }
+    .btn-primary{background:var(--navy);color:#fff}
+    .btn-green{background:var(--green);color:#fff}
+    .btn-secondary{background:#fff;color:#111827;border:1px solid var(--line)}
+    .row{display:flex;gap:10px}
+    .row>*{flex:1}
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}
+    .top-left,.top-right{display:flex;align-items:center;gap:8px}
+    .chip{
+      border:none;border-radius:14px;padding:10px 13px;font-size:14px;font-weight:900;cursor:pointer
+    }
+    .chip-gray{background:#fff;color:#111827;border:1px solid var(--line)}
+    .chip-red{background:var(--red);color:#fff}
+    .chip-blue{background:var(--blue);color:#fff}
+    .summary{
+      background:#f8fafc;border:1px solid #e5e7eb;border-radius:16px;padding:12px;font-size:14px;line-height:1.55
+    }
+    .radio-wrap{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .radio-chip{
+      flex:1;min-width:90px;border:2px solid var(--line);border-radius:999px;padding:12px 14px;text-align:center;
+      font-size:14px;font-weight:900;background:#fff;cursor:pointer
+    }
+    .radio-chip.active{border-color:var(--blue);background:var(--blue-soft);color:var(--blue)}
+    #videoPreview{
+      width:100%;
+      min-height:320px;
+      border-radius:20px;
+      background:#000;
+      object-fit:cover;
+    }
+    .helper{font-size:12px;color:var(--sub);line-height:1.5;margin-top:8px}
+    .scanner-actions{display:flex;gap:10px;margin-top:12px}
+    .scanner-actions button{
+      flex:1;border:none;border-radius:14px;padding:12px;font-size:13px;font-weight:800;background:#e5e7eb;color:#111827
+    }
+    .hidden{display:none !important}
+    .code-box{
+      background:#f8fafc;border:1px solid #e5e7eb;border-radius:16px;padding:14px;margin-bottom:14px
+    }
+    .code-line{font-size:14px;line-height:1.55;word-break:break-all}
+    .qty-title{text-align:center;font-size:20px;font-weight:900;margin-bottom:12px}
+    .qty-wrap{text-align:center}
+    .qty-control{display:flex;justify-content:center;align-items:center;gap:14px}
+    .qty-btn{
+      width:56px;height:56px;border:none;border-radius:18px;background:#111827;color:#fff;font-size:28px;font-weight:900;cursor:pointer
+    }
+    .qty-value{
+      min-width:96px;padding:14px 12px;border:2px solid var(--line);border-radius:18px;background:#fff;
+      font-size:32px;font-weight:900;line-height:1;cursor:pointer;user-select:none
+    }
+    .list{display:flex;flex-direction:column;gap:10px}
+    .item{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:12px}
+    .item-top{display:flex;justify-content:space-between;gap:10px;margin-bottom:8px}
+    .item-code{font-size:15px;font-weight:900;word-break:break-all}
+    .item-sub{font-size:12px;color:var(--sub);line-height:1.45}
+    .tiny{border:none;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:900;cursor:pointer}
+    .tiny-red{background:#fee2e2;color:#b91c1c}
+    .item-bottom{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .qty-inline{display:flex;align-items:center;gap:8px}
+    .qty-inline button{
+      width:34px;height:34px;border:none;border-radius:10px;background:#111827;color:#fff;font-size:18px;font-weight:900
+    }
+    .qty-inline .v{
+      min-width:52px;text-align:center;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;font-weight:900;cursor:pointer
+    }
+    .tag{display:inline-block;padding:5px 8px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:11px;font-weight:900}
+    .option-block{border:1px solid #e5e7eb;border-radius:16px;padding:14px;background:#fff;margin-top:12px}
+    .partner-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px dashed #e5e7eb}
+    .partner-row:last-child{border-bottom:none}
+    .toast{
+      position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+      background:rgba(17,24,39,.95);color:#fff;padding:12px 16px;border-radius:999px;
+      font-size:13px;font-weight:900;opacity:0;pointer-events:none;transition:.18s ease;
+      max-width:90vw;text-align:center;z-index:9999
+    }
+    .toast.show{opacity:1}
+    .manual-grid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
+  </style>
 </head>
 <body>
+<div class="app">
+  <section id="screenLogin" class="screen active">
+    <div class="card hero">
+      <h1>[협력사 재고 조사 간편앱]</h1>
+      <p>모바일 전용 간단 재고 조사 기록/전송 기능 앱</p>
+    </div>
 
-<div id="login" class="screen active">
-<div class="card">
-<h3>로그인</h3>
+    <div class="card">
+      <div class="section-title">로그인 구분</div>
+      <div class="select-wrap">
+        <div class="select-card active" id="roleCardPartner" onclick="setRole('partner')">
+          <div class="logo-box">
+            <svg width="58" height="58" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 21V9.8L8.5 7v3.2L14 7v3.2L21 6.8V21H3Z" fill="#111"/>
+              <path d="M7 17H9V19H7V17ZM11 17H13V19H11V17ZM15 17H17V19H15V17ZM7 13H9V15H7V13ZM15 13H17V15H15V13Z" fill="#fff"/>
+            </svg>
+          </div>
+          <div class="card-text">협력사</div>
+        </div>
 
-<button onclick="setRole('partner')">협력사</button>
-<button onclick="setRole('lx')">LX하우시스</button>
+        <div class="select-card" id="roleCardLx" onclick="setRole('lx')">
+          <div class="logo-box">
+            <svg width="58" height="58" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 20V9.5L9.5 5L14 8V4L20 8V20H4Z" fill="#111"/>
+              <rect x="7" y="11" width="2.2" height="2.2" fill="white"/>
+              <rect x="10.4" y="11" width="2.2" height="2.2" fill="white"/>
+              <rect x="13.8" y="11" width="2.2" height="2.2" fill="white"/>
+              <rect x="7" y="14.4" width="2.2" height="2.2" fill="white"/>
+              <rect x="10.4" y="14.4" width="2.2" height="2.2" fill="white"/>
+              <rect x="13.8" y="14.4" width="2.2" height="2.2" fill="white"/>
+            </svg>
+          </div>
+          <div class="card-text">LX하우시스</div>
+        </div>
+      </div>
 
-<div id="partnerBox">
-<select id="partner">
-<option>건일</option><option>새한</option><option>유진</option>
-<option>일진</option><option>조일</option><option>공간</option><option>보승</option>
-</select>
+      <div id="partnerFieldWrap">
+        <div class="input-label">협력사명</div>
+        <select id="partnerSelect" class="select"></select>
+      </div>
+
+      <div class="input-label">아이디</div>
+      <input id="loginUserId" class="input" placeholder="아이디">
+
+      <div class="input-label">비밀번호</div>
+      <input id="loginPassword" class="input" type="password" placeholder="비밀번호">
+
+      <button class="btn btn-primary" style="margin-top:18px" onclick="handleLogin()">로그인</button>
+    </div>
+  </section>
+
+  <section id="screenMain" class="screen">
+    <div class="topbar">
+      <div class="top-left"><button class="chip chip-gray" onclick="openSettings()">설정</button></div>
+      <div class="top-right"><button class="chip chip-red" onclick="openResult()">조사 완료</button></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">조사 정보</div>
+      <div class="summary">
+        <div id="mainSummaryRole">구분: -</div>
+        <div id="mainSummaryPartner">협력사명: -</div>
+        <div id="mainSummaryUser">아이디: -</div>
+        <div id="mainSummaryDate">재고조사 기준일: -</div>
+      </div>
+
+      <div class="section-title" style="margin-top:16px">자재 구분</div>
+      <div class="radio-wrap">
+        <div id="chipRaw" class="radio-chip active" onclick="setCategory('raw')">원자재</div>
+        <div id="chipSub" class="radio-chip" onclick="setCategory('sub')">부자재</div>
+        <div id="chipFin" class="radio-chip" onclick="setCategory('finished')">완제품</div>
+      </div>
+
+      <div id="rawUnitWrap">
+        <div class="input-label">단위 선택</div>
+        <div class="radio-wrap">
+          <div id="rawUnitP" class="radio-chip active" onclick="setRawUnit('P')">팔레트 (P)</div>
+          <div id="rawUnitB" class="radio-chip" onclick="setRawUnit('본')">낱본 (본)</div>
+        </div>
+      </div>
+
+      <div id="subUnitWrap" class="hidden">
+        <div class="input-label">단위 선택</div>
+        <div class="radio-wrap">
+          <div id="subUnitBox" class="radio-chip active" onclick="setSubUnit('박스')">박스</div>
+          <div id="subUnitEa" class="radio-chip" onclick="setSubUnit('낱개')">낱개</div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="margin-top:18px" onclick="openScanner()">📷 스캔 / 사진찍기</button>
+
+      <div class="option-block">
+        <div><strong>현재 누적</strong></div>
+        <div id="quickCount">총 0건</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screenScan" class="screen">
+    <div class="topbar">
+      <div class="top-left"><button class="chip chip-gray" onclick="backToMainFromScan()">← 메인</button></div>
+      <div class="top-right"><button class="chip chip-red" onclick="openResult()">조사 완료</button></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">재고 스캔</div>
+      <video id="videoPreview" muted playsinline></video>
+
+      <div class="manual-grid">
+        <input id="manualCode" class="input" placeholder="자재코드 입력 (선택)">
+        <input id="manualName" class="input" placeholder="자재명 입력 (선택)">
+      </div>
+
+      <div class="scanner-actions">
+        <button onclick="submitManualInput()">자재코드 / 자재명 직접 입력</button>
+      </div>
+
+      <div class="helper">둘 중 하나만 입력해도 됩니다. 둘 다 비우면 저장할 수 없습니다.</div>
+      <div class="helper">QR 인식 후 수량 입력 화면으로 이동합니다. 저장하면 즉시 카메라가 다시 켜집니다.</div>
+    </div>
+  </section>
+
+  <section id="screenQty" class="screen">
+    <div class="topbar">
+      <div class="top-left"><button class="chip chip-gray" onclick="returnToScan()">← 재고 스캔</button></div>
+      <div class="top-right"><button class="chip chip-red" onclick="openResult()">조사 완료</button></div>
+    </div>
+
+    <div class="card">
+      <div class="qty-title">수량 입력</div>
+      <div class="code-box">
+        <div class="code-line"><strong>조사자재코드:</strong> <span id="qtyRawCode">-</span></div>
+        <div class="code-line"><strong>자재코드:</strong> <span id="qtyCode">-</span></div>
+        <div class="code-line"><strong>자재명:</strong> <span id="qtyName">-</span></div>
+        <div class="code-line"><strong>LOT:</strong> <span id="qtyLot">-</span></div>
+        <div class="code-line"><strong>일련번호:</strong> <span id="qtySerial">-</span></div>
+        <div class="code-line"><strong>방식:</strong> <span id="qtyMethod">-</span></div>
+        <div class="code-line"><strong>구분/단위:</strong> <span id="qtyCategoryUnit">-</span></div>
+      </div>
+
+      <div class="qty-wrap">
+        <div class="helper" id="qtyUnitLabel">수량</div>
+        <div class="qty-control" style="margin-top:10px">
+          <button class="qty-btn" onclick="changeQty(-1)">−</button>
+          <div id="qtyValue" class="qty-value" onclick="directQtyInput()">1</div>
+          <button class="qty-btn" onclick="changeQty(1)">＋</button>
+        </div>
+      </div>
+
+      <button class="btn btn-green" style="margin-top:18px" onclick="saveEntry()">저장하기</button>
+    </div>
+  </section>
+
+  <section id="screenResult" class="screen">
+    <div class="topbar">
+      <div class="top-left"><button class="chip chip-gray" onclick="backToMainFromResult()">← 메인</button></div>
+      <div class="top-right"><button class="chip chip-blue" onclick="openScanner()">추가 스캔</button></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">조사 결과</div>
+      <div class="summary">
+        <div id="resultSummary1">총 0건</div>
+        <div id="resultSummary2">-</div>
+      </div>
+
+      <div id="resultList" class="list" style="margin-top:12px"></div>
+
+      <div class="row" style="margin-top:14px">
+        <button class="btn btn-secondary" onclick="downloadExcel()">엑셀 저장</button>
+        <button class="btn btn-primary" onclick="sendMail()">메일 전송</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screenSettings" class="screen">
+    <div class="topbar">
+      <div class="top-left"><button class="chip chip-gray" onclick="closeSettings()">← 뒤로</button></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">기본 설정</div>
+
+      <div class="option-block">
+        <div class="input-label">회사 담당자 이메일</div>
+        <textarea id="companyEmails" class="textarea" rows="3" placeholder="예: a@lxhausys.com, b@lxhausys.com"></textarea>
+      </div>
+
+      <div class="option-block">
+        <div class="input-label">LX하우시스 아이디</div>
+        <input id="lxId" class="input" placeholder="기본값: admin01">
+        <div class="input-label">LX하우시스 비밀번호</div>
+        <input id="lxPw" class="input" type="password" placeholder="기본값: 1">
+      </div>
+
+      <div class="option-block">
+        <div class="section-title">협력사 리스트</div>
+        <input id="newPartnerName" class="input" placeholder="협력사명">
+        <input id="newPartnerId" class="input" placeholder="아이디 (예: k1)" style="margin-top:8px">
+        <input id="newPartnerPw" class="input" type="password" placeholder="비밀번호" style="margin-top:8px">
+        <button class="btn btn-secondary" style="margin-top:10px" onclick="addPartner()">협력사 추가</button>
+        <div id="partnerListBox" style="margin-top:10px"></div>
+      </div>
+
+      <button class="btn btn-primary" onclick="saveSettings()">설정 저장</button>
+    </div>
+  </section>
 </div>
 
-<input id="id" class="input" placeholder="아이디">
-<input id="pw" class="input" placeholder="비밀번호">
-
-<button class="btn" onclick="login()">로그인</button>
-</div>
-</div>
-
-<div id="main" class="screen">
-<div class="card">
-<h3>자재</h3>
-
-<button onclick="setType('raw')">원자재</button>
-<button onclick="setType('sub')">부자재</button>
-<button onclick="setType('fin')">완제품</button>
-
-<div id="unit"></div>
-
-<button class="btn" onclick="startScan()">📷 스캔</button>
-</div>
-</div>
-
-<div id="scan" class="screen">
-<video id="video" width="100%" height="300"></video>
-<button onclick="manual()">자재코드 / 자재명 입력</button>
-</div>
-
-<div id="qty" class="screen">
-<div class="card">
-<div id="code"></div>
-<div id="name"></div>
-
-<h2 id="q">1</h2>
-<button onclick="chg(-1)">-</button>
-<button onclick="chg(1)">+</button>
-
-<button class="btn" onclick="save()">저장</button>
-</div>
-</div>
+<div id="toast" class="toast"></div>
 
 <script>
-let role="partner"
-let type="raw"
-let unit="P"
-let current=null
-let list=[]
-let codeReader=null
+const appState = {
+  role:'partner',
+  category:'raw',
+  rawUnit:'P',
+  subUnit:'박스',
+  partnerName:'',
+  userId:'',
+  inventoryDate:'',
+  records:[],
+  draftKey:'',
+  currentEntry:null,
+  codeReader:null,
+  controls:null,
+  scanning:false
+};
 
-function show(id){
-document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'))
-document.getElementById(id).classList.add('active')
+const DEFAULT_SETTINGS = {
+  companyEmails:'',
+  lxId:'admin01',
+  lxPw:'1',
+  partners:[
+    {name:'건일', id:'k1', pw:'1234'},
+    {name:'새한', id:'s1', pw:'1234'},
+    {name:'유진', id:'y1', pw:'1234'},
+    {name:'일진', id:'i1', pw:'1234'},
+    {name:'조일', id:'j1', pw:'1234'},
+    {name:'공간', id:'g1', pw:'1234'},
+    {name:'보승', id:'b1', pw:'1234'}
+  ]
+};
+
+let settings = loadSettings();
+
+function el(id){ return document.getElementById(id); }
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  el(id).classList.add('active');
+}
+function toast(msg, ms=1000){
+  const t = el('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(()=>t.classList.remove('show'), ms);
+}
+function vibrate(){ if(navigator.vibrate) navigator.vibrate(60); }
+function getInventoryDate(){
+  const d = new Date();
+  const last = new Date(d.getFullYear(), d.getMonth()+1, 0);
+  if(last.getDay() === 0) last.setDate(last.getDate()-1);
+  return last.toISOString().slice(0,10);
+}
+function nowText(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function compactNow(){
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}${String(d.getSeconds()).padStart(2,'0')}`;
+}
+function safe(v=''){ return String(v).replace(/[\\/:*?"<>|]/g,'_'); }
+function escapeHtml(str=''){
+  return String(str)
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'","&#39;");
 }
 
-function setRole(r){
-role=r
-document.getElementById('partnerBox').style.display = r==="lx"?"none":"block"
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem('lxStockSettings');
+    if(!raw) return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+    const parsed = JSON.parse(raw);
+    if(!Array.isArray(parsed.partners) || parsed.partners.length===0){
+      parsed.partners = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.partners));
+    }
+    if(!parsed.lxId) parsed.lxId = 'admin01';
+    if(!parsed.lxPw) parsed.lxPw = '1';
+    if(parsed.companyEmails == null) parsed.companyEmails = '';
+    return parsed;
+  }catch{
+    return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  }
+}
+function persistSettings(){ localStorage.setItem('lxStockSettings', JSON.stringify(settings)); }
+function buildDraftKey(){ return `lxStockDraft_${appState.role}_${appState.partnerName}_${appState.userId}_${appState.inventoryDate}`; }
+function persistDraft(){
+  if(!appState.draftKey) return;
+  localStorage.setItem(appState.draftKey, JSON.stringify({
+    role:appState.role,
+    category:appState.category,
+    rawUnit:appState.rawUnit,
+    subUnit:appState.subUnit,
+    partnerName:appState.partnerName,
+    userId:appState.userId,
+    inventoryDate:appState.inventoryDate,
+    records:appState.records
+  }));
+  updateQuickCount();
+}
+function loadDraft(){
+  appState.draftKey = buildDraftKey();
+  const raw = localStorage.getItem(appState.draftKey);
+  if(!raw){ appState.records=[]; return; }
+  try{
+    const obj = JSON.parse(raw);
+    appState.records = Array.isArray(obj.records) ? obj.records : [];
+    appState.category = obj.category || 'raw';
+    appState.rawUnit = obj.rawUnit || 'P';
+    appState.subUnit = obj.subUnit || '박스';
+  }catch{
+    appState.records = [];
+  }
 }
 
-function login(){
-let id=document.getElementById('id').value
-let pw=document.getElementById('pw').value
-
-if(role==="lx"){
-if(id!=="admin01"||pw!=="1"){alert("로그인 오류");return}
+function setRole(role){
+  appState.role = role;
+  el('roleCardPartner').classList.toggle('active', role==='partner');
+  el('roleCardLx').classList.toggle('active', role==='lx');
+  el('partnerFieldWrap').classList.toggle('hidden', role==='lx');
 }
-show("main")
+function renderPartnerDropdown(){
+  el('partnerSelect').innerHTML = settings.partners.map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('');
 }
+function handleLogin(){
+  const userId = el('loginUserId').value.trim();
+  const password = el('loginPassword').value.trim();
+  if(!userId || !password){ toast('아이디와 비밀번호를 입력하세요.',1200); return; }
 
-function setType(t){
-type=t
-let u=document.getElementById('unit')
-if(t==="raw"){u.innerText="팔레트 / 낱본";unit="P"}
-if(t==="sub"){u.innerText="박스 / 낱개";unit="박스"}
-if(t==="fin"){u.innerText="EA";unit="EA"}
+  if(appState.role === 'partner'){
+    const partnerName = el('partnerSelect').value;
+    const found = settings.partners.find(p=>p.name===partnerName);
+    if(!found){ toast('협력사를 선택하세요.',1200); return; }
+    if(found.id !== userId || found.pw !== password){ toast('협력사 로그인 정보가 맞지 않습니다.',1400); return; }
+    appState.partnerName = found.name;
+  }else{
+    if(userId !== (settings.lxId || 'admin01') || password !== (settings.lxPw || '1')){
+      toast('LX하우시스 로그인 정보가 맞지 않습니다.',1400); return;
+    }
+    appState.partnerName = 'LX하우시스';
+  }
+
+  appState.userId = userId;
+  appState.inventoryDate = getInventoryDate();
+  loadDraft();
+  fillMain();
+  updateCategoryUI();
+  updateQuickCount();
+  showScreen('screenMain');
 }
-
-function startScan(){
-show("scan")
-codeReader=new ZXing.BrowserQRCodeReader()
-codeReader.decodeFromVideoDevice(null,'video',(res,err)=>{
-if(res){
-let txt=res.text
-if(list.includes(txt)){alert("중복");return}
-current={code:txt,name:"",qty:1}
-codeReader.reset()
-openQty()
-}
-})
-}
-
-function manual(){
-let code=prompt("자재코드")
-let name=prompt("자재명")
-
-if(!code && !name){alert("입력 필요");return}
-
-let key=code||name
-if(list.includes(key)){alert("중복");return}
-
-current={code:code||"",name:name||"",qty:1}
-openQty()
+function fillMain(){
+  el('mainSummaryRole').textContent = `구분: ${appState.role==='partner' ? '협력사' : 'LX하우시스'}`;
+  el('mainSummaryPartner').textContent = `협력사명: ${appState.partnerName}`;
+  el('mainSummaryUser').textContent = `아이디: ${appState.userId}`;
+  el('mainSummaryDate').textContent = `재고조사 기준일: ${appState.inventoryDate}`;
 }
 
-function openQty(){
-document.getElementById('code').innerText="코드: "+current.code
-document.getElementById('name').innerText="명: "+current.name
-document.getElementById('q').innerText=1
-show("qty")
+function setCategory(category){ appState.category=category; updateCategoryUI(); persistDraft(); }
+function setRawUnit(v){
+  appState.rawUnit = v;
+  el('rawUnitP').classList.toggle('active', v==='P');
+  el('rawUnitB').classList.toggle('active', v==='본');
+  persistDraft();
+}
+function setSubUnit(v){
+  appState.subUnit = v;
+  el('subUnitBox').classList.toggle('active', v==='박스');
+  el('subUnitEa').classList.toggle('active', v==='낱개');
+  persistDraft();
+}
+function updateCategoryUI(){
+  el('chipRaw').classList.toggle('active', appState.category==='raw');
+  el('chipSub').classList.toggle('active', appState.category==='sub');
+  el('chipFin').classList.toggle('active', appState.category==='finished');
+  el('rawUnitWrap').classList.toggle('hidden', appState.category!=='raw');
+  el('subUnitWrap').classList.toggle('hidden', appState.category!=='sub');
+  setRawUnit(appState.rawUnit);
+  setSubUnit(appState.subUnit);
+}
+function currentUnit(){
+  if(appState.category==='raw') return appState.rawUnit;
+  if(appState.category==='sub') return appState.subUnit;
+  return 'EA';
+}
+function currentCategoryText(){
+  if(appState.category==='raw') return '원자재';
+  if(appState.category==='sub') return '부자재';
+  return '완제품';
+}
+function updateQuickCount(){ el('quickCount').textContent = `총 ${appState.records.length}건`; }
+
+async function openScanner(){
+  showScreen('screenScan');
+  el('manualCode').value = '';
+  el('manualName').value = '';
+  await startScanner();
+}
+async function backToMainFromScan(){ await stopScanner(); showScreen('screenMain'); }
+async function returnToScan(){ showScreen('screenScan'); await startScanner(); }
+
+async function startScanner(){
+  if(appState.scanning) return;
+  try{
+    await stopScanner();
+    appState.codeReader = new ZXing.BrowserQRCodeReader();
+    appState.scanning = true;
+    appState.controls = await appState.codeReader.decodeFromVideoDevice(
+      null,
+      'videoPreview',
+      (result, err) => {
+        if(result){
+          const txt = result.getText ? result.getText() : result.text;
+          if(isDuplicate(txt)){ vibrate(); toast('이미 스캔된 자재입니다.',1000); return; }
+          stopScanner().then(()=>openQtyFromRaw(txt, 'QR'));
+        }
+      }
+    );
+  }catch(err){
+    appState.scanning = false;
+    console.error(err);
+    toast('카메라 시작 실패', 1200);
+  }
+}
+async function stopScanner(){
+  try{
+    if(appState.controls && appState.controls.stop) appState.controls.stop();
+  }catch{}
+  try{
+    if(appState.codeReader && appState.codeReader.reset) appState.codeReader.reset();
+  }catch{}
+  appState.controls = null;
+  appState.codeReader = null;
+  appState.scanning = false;
 }
 
-function chg(n){
-current.qty+=n
-if(current.qty<1)current.qty=1
-document.getElementById('q').innerText=current.qty
+function parseRawCode(raw){
+  const txt = String(raw || '').trim();
+  const parts = txt.split(/[|\n,;/]+/).map(v=>v.trim()).filter(Boolean);
+  if(parts.length >= 3){
+    return { code:parts[0], lot:parts[1], serial:parts[2], name:'' };
+  }
+  return { code:txt, lot:'', serial:'', name:'' };
+}
+function isDuplicate(key){
+  return appState.records.some(r => r.dupKey === key);
+}
+function openQtyFromRaw(raw, method){
+  const parsed = parseRawCode(raw);
+  appState.currentEntry = {
+    method,
+    rawCode: raw,
+    code: parsed.code || '',
+    name: parsed.name || '',
+    lot: parsed.lot || '',
+    serial: parsed.serial || '',
+    qty: 1,
+    category: currentCategoryText(),
+    unit: currentUnit(),
+    dupKey: raw,
+    dateTime: nowText()
+  };
+  fillQtyScreen();
+  showScreen('screenQty');
+}
+function submitManualInput(){
+  const code = el('manualCode').value.trim();
+  const name = el('manualName').value.trim();
+  if(!code && !name){ toast('자재코드 또는 자재명을 입력하세요.', 1200); return; }
+
+  const dupKey = code || name;
+  if(isDuplicate(dupKey)){ toast('이미 입력된 자재입니다.', 1100); return; }
+
+  stopScanner().then(()=>{
+    appState.currentEntry = {
+      method:'MANUAL',
+      rawCode: dupKey,
+      code: code,
+      name: name,
+      lot:'',
+      serial:'',
+      qty:1,
+      category: currentCategoryText(),
+      unit: currentUnit(),
+      dupKey: dupKey,
+      dateTime: nowText()
+    };
+    fillQtyScreen();
+    showScreen('screenQty');
+  });
+}
+function fillQtyScreen(){
+  const e = appState.currentEntry;
+  el('qtyRawCode').textContent = e.rawCode || '-';
+  el('qtyCode').textContent = e.code || '-';
+  el('qtyName').textContent = e.name || '-';
+  el('qtyLot').textContent = e.lot || '-';
+  el('qtySerial').textContent = e.serial || '-';
+  el('qtyMethod').textContent = e.method || '-';
+  el('qtyCategoryUnit').textContent = `${e.category} / ${e.unit}`;
+  el('qtyUnitLabel').textContent = `수량 (${e.unit})`;
+  el('qtyValue').textContent = String(e.qty || 1);
+}
+function changeQty(delta){
+  if(!appState.currentEntry) return;
+  const next = appState.currentEntry.qty + delta;
+  if(next < 1) return;
+  appState.currentEntry.qty = next;
+  el('qtyValue').textContent = String(next);
+}
+function directQtyInput(){
+  if(!appState.currentEntry) return;
+  const value = prompt('수량을 입력하세요.', String(appState.currentEntry.qty));
+  if(value === null) return;
+  const num = Number(value);
+  if(!Number.isFinite(num) || num < 1){ toast('1 이상의 숫자만 입력 가능', 1200); return; }
+  appState.currentEntry.qty = Math.floor(num);
+  el('qtyValue').textContent = String(appState.currentEntry.qty);
+}
+function saveEntry(){
+  if(!appState.currentEntry) return;
+  const rec = {
+    id:`REC_${Date.now()}_${Math.floor(Math.random()*1000)}`,
+    role:appState.role,
+    partnerName:appState.partnerName,
+    userId:appState.userId,
+    inventoryDate:appState.inventoryDate,
+    dateTime:appState.currentEntry.dateTime,
+    category:appState.currentEntry.category,
+    rawCode:appState.currentEntry.rawCode,
+    code:appState.currentEntry.code,
+    name:appState.currentEntry.name,
+    lot:appState.currentEntry.lot,
+    serial:appState.currentEntry.serial,
+    qty:appState.currentEntry.qty,
+    unit:appState.currentEntry.unit,
+    method:appState.currentEntry.method,
+    dupKey:appState.currentEntry.dupKey
+  };
+  appState.records.push(rec);
+  appState.currentEntry = null;
+  persistDraft();
+  renderResultList();
+  vibrate();
+  toast(`저장되었습니다 (총 ${appState.records.length}건)`, 600);
+  openScanner();
 }
 
-function save(){
-let key=current.code||current.name
-list.push(key)
-alert("저장됨")
-startScan()
+async function openResult(){ await stopScanner(); renderResultList(); showScreen('screenResult'); }
+function backToMainFromResult(){ fillMain(); updateQuickCount(); showScreen('screenMain'); }
+function renderResultList(){
+  el('resultSummary1').textContent = `총 ${appState.records.length}건`;
+  el('resultSummary2').textContent = `${appState.partnerName} / ${appState.userId} / ${appState.inventoryDate}`;
+  const wrap = el('resultList');
+  if(appState.records.length===0){
+    wrap.innerHTML = `<div class="summary">저장된 조사 내역이 없습니다.</div>`;
+    return;
+  }
+  wrap.innerHTML = appState.records.map((r, idx)=>`
+    <div class="item">
+      <div class="item-top">
+        <div>
+          <div class="item-code">${escapeHtml(r.rawCode)}</div>
+          <div class="item-sub">
+            ${escapeHtml(r.category)} / ${escapeHtml(r.unit)}<br>
+            자재코드: ${escapeHtml(r.code || '-')} / 자재명: ${escapeHtml(r.name || '-')}<br>
+            LOT: ${escapeHtml(r.lot || '-')} / SERIAL: ${escapeHtml(r.serial || '-')}<br>
+            ${escapeHtml(r.dateTime)} / ${escapeHtml(r.method)}
+          </div>
+        </div>
+        <button class="tiny tiny-red" onclick="deleteRecord('${r.id}')">삭제</button>
+      </div>
+      <div class="item-bottom">
+        <div class="qty-inline">
+          <button onclick="changeRecordQty('${r.id}', -1)">−</button>
+          <div class="v" onclick="directRecordQty('${r.id}')">${r.qty}</div>
+          <button onclick="changeRecordQty('${r.id}', 1)">＋</button>
+        </div>
+        <div class="tag">${idx+1}건째</div>
+      </div>
+    </div>
+  `).join('');
 }
+function findRecord(id){ return appState.records.find(r=>r.id===id); }
+function deleteRecord(id){
+  appState.records = appState.records.filter(r=>r.id!==id);
+  persistDraft(); renderResultList(); updateQuickCount(); toast('삭제되었습니다.', 800);
+}
+function changeRecordQty(id, delta){
+  const rec = findRecord(id); if(!rec) return;
+  const next = rec.qty + delta; if(next < 1) return;
+  rec.qty = next; persistDraft(); renderResultList();
+}
+function directRecordQty(id){
+  const rec = findRecord(id); if(!rec) return;
+  const value = prompt('수량을 입력하세요.', String(rec.qty));
+  if(value===null) return;
+  const num = Number(value);
+  if(!Number.isFinite(num) || num < 1){ toast('1 이상의 숫자만 입력 가능', 1200); return; }
+  rec.qty = Math.floor(num); persistDraft(); renderResultList();
+}
+
+async function buildWorkbookBuffer(){
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('재고조사');
+  ws.columns = [
+    {header:'협력사명', key:'partnerName', width:18},
+    {header:'조사자ID', key:'userId', width:14},
+    {header:'조사일시', key:'dateTime', width:20},
+    {header:'구분', key:'category', width:12},
+    {header:'자재코드', key:'code', width:18},
+    {header:'자재명', key:'name', width:18},
+    {header:'조사자재코드', key:'rawCode', width:30},
+    {header:'수량', key:'qty', width:10},
+    {header:'단위', key:'unit', width:10}
+  ];
+  ws.getRow(1).font = {bold:true};
+  ws.getRow(1).alignment = {horizontal:'center', vertical:'middle'};
+  appState.records.forEach(r=>{
+    ws.addRow({
+      partnerName:r.partnerName, userId:r.userId, dateTime:r.dateTime, category:r.category,
+      code:r.code, name:r.name, rawCode:r.rawCode, qty:r.qty, unit:r.unit
+    });
+  });
+  return wb.xlsx.writeBuffer();
+}
+async function downloadExcel(){
+  if(appState.records.length===0){ toast('저장된 조사 내역이 없습니다.', 1200); return; }
+  const buffer = await buildWorkbookBuffer();
+  const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  saveAs(blob, `재고조사_${safe(appState.partnerName)}_${compactNow()}.xlsx`);
+  toast('엑셀 저장 완료', 900);
+}
+function companyRecipients(){
+  return String(settings.companyEmails||'').split(',').map(v=>v.trim()).filter(Boolean).filter(v=>/@lxhausys\.com$/i.test(v));
+}
+async function sendMail(){
+  if(appState.records.length===0){ toast('저장된 조사 내역이 없습니다.', 1200); return; }
+  const recipients = companyRecipients();
+  if(recipients.length===0){ toast('설정에서 회사 담당자 이메일을 입력하세요.', 1400); return; }
+  const buffer = await buildWorkbookBuffer();
+  const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const fileName = `재고조사_${safe(appState.partnerName)}_${compactNow()}.xlsx`;
+  saveAs(blob, fileName);
+  const subject = encodeURIComponent(`[재고조사결과] ${appState.inventoryDate} / ${appState.partnerName}`);
+  const body = encodeURIComponent(`협력사명: ${appState.partnerName}\n조사자 ID: ${appState.userId}\n조사일시: ${nowText()}\n\n재고조사 결과 파일을 첨부하여 발송해주세요.`);
+  location.href = `mailto:${recipients.join(',')}?subject=${subject}&body=${body}`;
+  toast('엑셀 저장 후 메일 앱을 엽니다.', 1600);
+}
+
+function openSettings(){ fillSettingsUI(); showScreen('screenSettings'); }
+function closeSettings(){ showScreen('screenMain'); }
+function fillSettingsUI(){
+  el('companyEmails').value = settings.companyEmails || '';
+  el('lxId').value = settings.lxId || 'admin01';
+  el('lxPw').value = settings.lxPw || '1';
+  renderPartnerList();
+}
+function renderPartnerList(){
+  const wrap = el('partnerListBox');
+  if(settings.partners.length===0){
+    wrap.innerHTML = '<div class="helper">등록된 협력사가 없습니다.</div>';
+    renderPartnerDropdown();
+    return;
+  }
+  wrap.innerHTML = settings.partners.map(p=>`
+    <div class="partner-row">
+      <div style="flex:1">
+        <strong>${escapeHtml(p.name)}</strong><br>
+        <span style="color:#6b7280;font-size:12px">${escapeHtml(p.id)}</span>
+      </div>
+      <button class="tiny tiny-red" onclick="removePartner('${escapeHtml(p.id)}')">삭제</button>
+    </div>
+  `).join('');
+  renderPartnerDropdown();
+}
+function addPartner(){
+  const name = el('newPartnerName').value.trim();
+  const id = el('newPartnerId').value.trim();
+  const pw = el('newPartnerPw').value.trim();
+  if(!name || !id || !pw){ toast('협력사명, 아이디, 비밀번호 입력', 1300); return; }
+  if(settings.partners.some(p=>p.id===id)){ toast('이미 등록된 아이디입니다.', 1200); return; }
+  settings.partners.push({name,id,pw});
+  persistSettings(); renderPartnerList();
+  el('newPartnerName').value=''; el('newPartnerId').value=''; el('newPartnerPw').value='';
+  toast('협력사 추가 완료', 900);
+}
+function removePartner(id){
+  settings.partners = settings.partners.filter(p=>p.id!==id);
+  persistSettings(); renderPartnerList(); toast('삭제되었습니다.', 800);
+}
+function saveSettings(){
+  const rawEmails = el('companyEmails').value.trim();
+  const validEmails = String(rawEmails).split(',').map(v=>v.trim()).filter(Boolean).filter(v=>/@lxhausys\.com$/i.test(v));
+  if(rawEmails && validEmails.length===0){ toast('@lxhausys.com 메일만 저장 가능', 1400); return; }
+  settings.companyEmails = validEmails.join(', ');
+  settings.lxId = el('lxId').value.trim() || 'admin01';
+  settings.lxPw = el('lxPw').value.trim() || '1';
+  persistSettings(); renderPartnerDropdown(); toast('설정 저장 완료', 900); closeSettings();
+}
+
+function init(){
+  settings = loadSettings();
+  renderPartnerDropdown();
+  fillSettingsUI();
+  setRole('partner');
+  setCategory('raw');
+}
+init();
 </script>
-
 </body>
 </html>
