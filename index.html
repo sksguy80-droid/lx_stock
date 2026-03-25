@@ -1,1 +1,158 @@
-<html><body>파일 생성 테스트</body></html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>재고 조사 앱</title>
+<script src="https://unpkg.com/@zxing/library@latest"></script>
+<style>
+body{font-family:sans-serif;background:#f3f5f7;margin:0;padding:16px}
+.screen{display:none}
+.active{display:block}
+.card{background:#fff;padding:16px;border-radius:16px;margin-bottom:12px}
+button{padding:14px;border:none;border-radius:10px;font-weight:bold}
+.btn{width:100%;background:#111;color:#fff}
+.input{width:100%;padding:10px;margin-top:6px}
+</style>
+</head>
+<body>
+
+<div id="login" class="screen active">
+<div class="card">
+<h3>로그인</h3>
+
+<button onclick="setRole('partner')">협력사</button>
+<button onclick="setRole('lx')">LX하우시스</button>
+
+<div id="partnerBox">
+<select id="partner">
+<option>건일</option><option>새한</option><option>유진</option>
+<option>일진</option><option>조일</option><option>공간</option><option>보승</option>
+</select>
+</div>
+
+<input id="id" class="input" placeholder="아이디">
+<input id="pw" class="input" placeholder="비밀번호">
+
+<button class="btn" onclick="login()">로그인</button>
+</div>
+</div>
+
+<div id="main" class="screen">
+<div class="card">
+<h3>자재</h3>
+
+<button onclick="setType('raw')">원자재</button>
+<button onclick="setType('sub')">부자재</button>
+<button onclick="setType('fin')">완제품</button>
+
+<div id="unit"></div>
+
+<button class="btn" onclick="startScan()">📷 스캔</button>
+</div>
+</div>
+
+<div id="scan" class="screen">
+<video id="video" width="100%" height="300"></video>
+<button onclick="manual()">자재코드 / 자재명 입력</button>
+</div>
+
+<div id="qty" class="screen">
+<div class="card">
+<div id="code"></div>
+<div id="name"></div>
+
+<h2 id="q">1</h2>
+<button onclick="chg(-1)">-</button>
+<button onclick="chg(1)">+</button>
+
+<button class="btn" onclick="save()">저장</button>
+</div>
+</div>
+
+<script>
+let role="partner"
+let type="raw"
+let unit="P"
+let current=null
+let list=[]
+let codeReader=null
+
+function show(id){
+document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'))
+document.getElementById(id).classList.add('active')
+}
+
+function setRole(r){
+role=r
+document.getElementById('partnerBox').style.display = r==="lx"?"none":"block"
+}
+
+function login(){
+let id=document.getElementById('id').value
+let pw=document.getElementById('pw').value
+
+if(role==="lx"){
+if(id!=="admin01"||pw!=="1"){alert("로그인 오류");return}
+}
+show("main")
+}
+
+function setType(t){
+type=t
+let u=document.getElementById('unit')
+if(t==="raw"){u.innerText="팔레트 / 낱본";unit="P"}
+if(t==="sub"){u.innerText="박스 / 낱개";unit="박스"}
+if(t==="fin"){u.innerText="EA";unit="EA"}
+}
+
+function startScan(){
+show("scan")
+codeReader=new ZXing.BrowserQRCodeReader()
+codeReader.decodeFromVideoDevice(null,'video',(res,err)=>{
+if(res){
+let txt=res.text
+if(list.includes(txt)){alert("중복");return}
+current={code:txt,name:"",qty:1}
+codeReader.reset()
+openQty()
+}
+})
+}
+
+function manual(){
+let code=prompt("자재코드")
+let name=prompt("자재명")
+
+if(!code && !name){alert("입력 필요");return}
+
+let key=code||name
+if(list.includes(key)){alert("중복");return}
+
+current={code:code||"",name:name||"",qty:1}
+openQty()
+}
+
+function openQty(){
+document.getElementById('code').innerText="코드: "+current.code
+document.getElementById('name').innerText="명: "+current.name
+document.getElementById('q').innerText=1
+show("qty")
+}
+
+function chg(n){
+current.qty+=n
+if(current.qty<1)current.qty=1
+document.getElementById('q').innerText=current.qty
+}
+
+function save(){
+let key=current.code||current.name
+list.push(key)
+alert("저장됨")
+startScan()
+}
+</script>
+
+</body>
+</html>
